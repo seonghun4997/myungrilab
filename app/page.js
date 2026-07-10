@@ -36,18 +36,21 @@ export default function Home() {
   return (
     <main>
       <div ref={topRef} />
-      <Steps step={step} />
-      <div className="wrap">
-        {step === "intro" && <Intro onStart={() => goto("input")} />}
-        {step === "input" && <InputForm onComputed={onComputed} />}
-        {step === "reveal" && saju && <Reveal saju={saju} onNext={() => goto("quiz")} />}
-        {step === "quiz" && saju && (
-          <Quiz saju={saju} quiz={quiz} answers={answers} setAnswers={setAnswers} onNext={() => goto("teaser")} />
-        )}
-        {step === "teaser" && saju && <Teaser saju={saju} answers={answers} quiz={quiz} onRestart={() => goto("input")} onReport={() => goto("report")} />}
-        {step === "report" && saju && <Report saju={saju} onRestart={() => goto("input")} />}
-        <Footer />
-      </div>
+      {step !== "intro" && <Steps step={step} />}
+      {step === "intro" ? (
+        <Intro onStart={() => goto("input")} />
+      ) : (
+        <div className="wrap">
+          {step === "input" && <InputForm onComputed={onComputed} />}
+          {step === "reveal" && saju && <Reveal saju={saju} onNext={() => goto("quiz")} />}
+          {step === "quiz" && saju && (
+            <Quiz saju={saju} quiz={quiz} answers={answers} setAnswers={setAnswers} onNext={() => goto("teaser")} />
+          )}
+          {step === "teaser" && saju && <Teaser saju={saju} answers={answers} quiz={quiz} onRestart={() => goto("input")} onReport={() => goto("report")} />}
+          {step === "report" && saju && <Report saju={saju} onRestart={() => goto("input")} />}
+          <Footer />
+        </div>
+      )}
     </main>
   );
 }
@@ -66,30 +69,52 @@ function Steps({ step }) {
 }
 
 // ---------------- 0. 인트로 ----------------
+// ---------------- 0. 인트로 (풀스크린 영상) ----------------
 function Intro({ onStart }) {
+  const [videoOk, setVideoOk] = useState(true);
   return (
-    <section className="fade-up" style={{ padding: "56px 0 30px", textAlign: "center" }}>
-      <div className="eyebrow">{CONFIG.BRAND_HANJA}</div>
-      <h1 className="display candle" style={{ fontSize: 38, lineHeight: 1.45, margin: "22px 0 14px" }}>
-        당신 사주에 박힌<br />
-        <span style={{ color: "var(--blood-bright)", textShadow: "0 0 24px rgba(214,56,42,0.4)" }}>살(煞)</span>,<br />
-        몇 개인지 아십니까
-      </h1>
-      <p style={{ color: "var(--ash)", fontSize: 15.5, maxWidth: 420, margin: "0 auto 8px" }}>
-        무서운 이야기를 지어내지 않습니다.<br />
-        당신의 원국에서 <b style={{ color: "var(--talisman)" }}>계산된 살만</b> 보여드리고,
-        그 살이 실제로 움직였던 해를 — <b style={{ color: "var(--talisman)" }}>당신의 과거로 확인</b>시켜 드립니다.
-      </p>
-      <p className="display" style={{ fontSize: 16, color: "var(--ash-dim)", margin: "20px 0 6px" }}>
-        무서운 건 살이 아닙니다.
-      </p>
-      <p className="display" style={{ fontSize: 20, color: "var(--blood-bright)", margin: "0 0 28px" }}>
-        맞는다는 겁니다.
-      </p>
-      <button className="btn btn-seal" style={{ maxWidth: 340 }} onClick={() => { ev("cta_start"); onStart(); }}>
-        무료 흉살 검사 시작
-      </button>
-      <p style={{ fontSize: 12.5, color: "var(--ash-dim)", marginTop: 12 }}>회원가입 없음 · 3초 · 생년월일시만 필요합니다</p>
+    <section className="intro-full">
+      {/* 배경 영상 — public/intro.mp4 파일을 넣으면 자동 재생됩니다 */}
+      {videoOk && (
+        <video
+          className="intro-video"
+          autoPlay
+          muted
+          loop
+          playsInline
+          poster="/intro.jpg"
+          onError={() => setVideoOk(false)}
+        >
+          <source src="/intro.mp4" type="video/mp4" />
+        </video>
+      )}
+      {/* 영상이 없을 때의 폴백 — 움직이는 안개와 촛불 잔광 */}
+      {!videoOk && <div className="intro-fallback" aria-hidden="true" />}
+      <div className="intro-grain" aria-hidden="true" />
+      <div className="intro-vignette" aria-hidden="true" />
+
+      <div className="intro-content">
+        <div className="eyebrow intro-eyebrow">{CONFIG.BRAND_HANJA}</div>
+        <h1 className="display candle intro-title">
+          당신 사주에 박힌<br />
+          <span className="intro-blood">살(煞)</span>,<br />
+          몇 개인지 아십니까
+        </h1>
+        <p className="intro-sub">
+          지어낸 공포가 아닙니다. 계산된 살만 보여드리고,<br />
+          그 살이 움직였던 해를 <b>당신의 과거로 확인</b>시켜 드립니다.
+        </p>
+      </div>
+
+      {/* 하단 고정 CTA — 부적 프레임 */}
+      <div className="intro-cta-bar">
+        <button className="intro-cta" onClick={() => { ev("cta_start"); onStart(); }}>
+          <span className="cta-seal" aria-hidden="true">煞</span>
+          <span className="cta-label">흉살 검사 시작</span>
+          <span className="cta-seal" aria-hidden="true">煞</span>
+        </button>
+        <p className="intro-cta-note">무료 · 회원가입 없음 · 3초</p>
+      </div>
     </section>
   );
 }

@@ -60,7 +60,7 @@ export default function Admin() {
   return (
     <main className="wrap" style={{ paddingTop: 40, paddingBottom: 80 }}>
       <div className="eyebrow">관리자</div>
-      <h1 className="display" style={{ fontSize: 24, margin: "10px 0 20px", color: "var(--ash)" }}>디비 관리</h1>
+      <h1 className="display" style={{ fontSize: 24, margin: "10px 0 20px", color: "var(--ink)" }}>디비 관리</h1>
 
       <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
         <input
@@ -68,13 +68,13 @@ export default function Admin() {
           placeholder="관리자 키"
           value={key}
           onChange={(e) => setKey(e.target.value)}
-          style={{ flex: 1, padding: 12, background: "#14110e", border: "1.5px solid #3a332b", color: "var(--ash)", fontSize: 15 }}
+          style={{ flex: 1, padding: 12, background: "#fdfbf4", border: "1.5px solid #c9c0ab", color: "var(--ink)", fontSize: 15 }}
         />
         <button className="btn" style={{ width: "auto", padding: "12px 22px" }} onClick={load}>불러오기</button>
       </div>
-      {msg && <p className="mono" style={{ fontSize: 13, color: "var(--talisman)", marginBottom: 14 }}>{msg}</p>}
+      {msg && <p className="mono" style={{ fontSize: 13, color: "var(--seal)", marginBottom: 14 }}>{msg}</p>}
 
-      {leads && leads.length === 0 && <p style={{ color: "var(--ash-dim)" }}>아직 들어온 디비가 없습니다.</p>}
+      {leads && leads.length === 0 && <p style={{ color: "var(--ink-soft)" }}>아직 들어온 디비가 없습니다.</p>}
 
       {leads && leads.map((l) => {
         const b = l.birth || {};
@@ -82,20 +82,20 @@ export default function Admin() {
           <div className="card" key={l.id} style={{ marginBottom: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
               <div>
-                <b style={{ fontSize: 17, color: "var(--talisman)" }}>{l.name}</b>
-                <span className="mono" style={{ fontSize: 13, marginLeft: 10, color: "var(--ash)" }}>{l.phone}</span>
+                <b style={{ fontSize: 17, color: "var(--seal)" }}>{l.name}</b>
+                <span className="mono" style={{ fontSize: 13, marginLeft: 10, color: "var(--ink)" }}>{l.phone}</span>
               </div>
-              <span className="mono" style={{ fontSize: 11, color: "var(--ash-dim)" }}>
+              <span className="mono" style={{ fontSize: 11, color: "var(--ink-soft)" }}>
                 {new Date(l.created_at).toLocaleString("ko-KR")}
               </span>
             </div>
-            <p className="mono" style={{ fontSize: 12.5, color: "var(--ash-dim)", margin: "8px 0" }}>
+            <p className="mono" style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: "8px 0" }}>
               {b.y}.{b.m}.{b.d} {b.hour != null ? `${b.hour}시` : "시간모름"} · {b.gender === "M" ? "남" : "여"} · {b.region || "-"} ·
               살 {l.sal_count ?? "-"}개{l.sal_names?.length ? ` (${l.sal_names.join(",")})` : ""} ·
               검증 {l.quiz_hits ?? "-"}/5
             </p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13, color: l.paid ? "var(--talisman)" : "var(--ash-dim)" }}>
+              <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13, color: l.paid ? "var(--seal)" : "var(--ink-soft)" }}>
                 <input type="checkbox" checked={!!l.paid} onChange={(e) => togglePaid(l.id, e.target.checked)} />
                 결제 확인
               </label>
@@ -107,7 +107,7 @@ export default function Admin() {
                 <>
                   <button className="btn btn-ghost" style={{ width: "auto", padding: "9px 14px", fontSize: 13 }} onClick={() => copy(reportUrl(l.token), "링크")}>링크 복사</button>
                   <button className="btn btn-ghost" style={{ width: "auto", padding: "9px 14px", fontSize: 13 }} onClick={() => copy(kakaoMsg(l), "카톡 안내문")}>카톡 안내문 복사</button>
-                  <a className="mono" style={{ fontSize: 12, color: "var(--talisman)" }} href={`/r/${l.token}`} target="_blank" rel="noreferrer">열람 ↗</a>
+                  <a className="mono" style={{ fontSize: 12, color: "var(--seal)" }} href={`/r/${l.token}`} target="_blank" rel="noreferrer">열람 ↗</a>
                 </>
               )}
             </div>

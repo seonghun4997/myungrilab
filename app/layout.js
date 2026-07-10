@@ -4,7 +4,7 @@ import { CONFIG } from "../lib/content";
 
 export const metadata = {
   title: `${CONFIG.BRAND} — ${CONFIG.TAGLINE}`,
-  description: CONFIG.SUB,
+  description: `${CONFIG.CLAIM} — ${CONFIG.TAGLINE}`,
 };
 
 export default function RootLayout({ children }) {

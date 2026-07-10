@@ -1,12 +1,12 @@
 "use client";
 // ============================================================
-// 퍼널: 영상 씬(탈출하기) → 귀신 대화형 입력(성별→생일→생시→연락처→이름)
-//       → 깃든 살 진단(일부 공개+블러) → 결제
+// 명문서당 퍼널: 영상 씬 → 훈장님 문답(성별→생일→생시→연락처→이름)
+//               → 재능 등급 진단(무료) + 공부살 잠금 → 결제
 // ============================================================
 import { useState, useMemo, useRef, useEffect } from "react";
-import { computeSaju, REGIONS } from "../lib/engine";
-import { salList } from "../lib/insights";
-import { CONFIG, GHOST, OFFER, SOCIAL_PROOF, TIME_SLOTS } from "../lib/content";
+import { computeSaju } from "../lib/engine";
+import { talentProfile, schoolRoadmap } from "../lib/insights";
+import { CONFIG, TEACHER, OFFER, SOCIAL_PROOF, TRUST, REPORT_ITEMS, UPSELL, TIME_SLOTS } from "../lib/content";
 import { track } from "@vercel/analytics";
 
 function ev(name, data) {
@@ -16,15 +16,14 @@ function ev(name, data) {
 const INPUT_STEPS = ["gender", "birth", "time", "phone", "name"];
 
 export default function Home() {
-  const [step, setStep] = useState("intro"); // intro → gender→birth→time→phone→name → checking → diag → pay
+  const [step, setStep] = useState("intro");
   const [form, setForm] = useState({
     gender: null, cal: "solar", leap: false,
     y: null, m: null, d: null,
-    slot: null, // TIME_SLOTS index
+    slot: null,
     phone: "", name: "", consent: false,
   });
   const [saju, setSaju] = useState(null);
-  const [leadId, setLeadId] = useState(null);
   const topRef = useRef(null);
 
   const goto = (s) => {
@@ -34,7 +33,6 @@ export default function Home() {
   };
 
   const submitAll = async () => {
-    // 양력 변환
     let sy = form.y, sm = form.m, sd = form.d;
     if (form.cal === "lunar") {
       try {
@@ -59,9 +57,8 @@ export default function Home() {
     setSaju(result);
     goto("checking");
 
-    // 디비 저장
     try {
-      const sals = salList(result).filter((s) => !s.good).map((s) => s.name);
+      const tp = talentProfile(result);
       const res = await fetch("/api/lead", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -69,12 +66,11 @@ export default function Home() {
           name: form.name.trim(),
           phone: form.phone.replace(/[^0-9]/g, ""),
           birth: { y: sy, m: sm, d: sd, hour: slot.hour, minute: slot.minute || 0, gender: form.gender, region: "미상", cal: form.cal, leap: form.leap, slot: slot.label },
-          salNames: sals,
-          salCount: sals.length,
+          salNames: tp.blockers.map((b) => b.name),
+          salCount: tp.blockers.length,
         }),
       });
       const data = await res.json();
-      setLeadId(data.id);
       ev("lead_submitted", { saved: !!data.id });
     } catch (e) {
       ev("lead_submitted", { saved: false });
@@ -87,11 +83,11 @@ export default function Home() {
       <div ref={topRef} />
       {step === "intro" && <Intro onStart={() => goto("gender")} />}
       {INPUT_STEPS.includes(step) && (
-        <GhostFlow step={step} form={form} setForm={setForm} goto={goto} onSubmit={submitAll} />
+        <TeacherFlow step={step} form={form} setForm={setForm} goto={goto} onSubmit={submitAll} />
       )}
       {step === "checking" && <Checking />}
       {step === "diag" && saju && <Diagnosis saju={saju} name={form.name} onPay={() => goto("pay")} />}
-      {step === "pay" && saju && <Payment saju={saju} />}
+      {step === "pay" && saju && <Payment />}
     </main>
   );
 }
@@ -107,61 +103,63 @@ function Intro({ onStart }) {
         </video>
       )}
       {!videoOk && <div className="intro-fallback" aria-hidden="true" />}
-      <div className="intro-grain" aria-hidden="true" />
       <div className="intro-vignette" aria-hidden="true" />
 
       <div className="intro-content">
-        <p className="scene-line">&lsquo;저 산에 <span className="scene-red">살무당</span>을 찾아가봐&rsquo;</p>
+        <div className="eyebrow">{CONFIG.BRAND_HANJA} · {CONFIG.CLAIM}</div>
+        <h1 className="intro-hook">
+          {CONFIG.HOOK.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}
+        </h1>
+        <p className="intro-sub">{CONFIG.TAGLINE}</p>
       </div>
 
       <div className="intro-cta-bar">
         <button className="intro-cta" onClick={() => { ev("cta_start"); onStart(); }}>
-          <span className="cta-seal" aria-hidden="true">煞</span>
-          <span className="cta-label">탈출하기</span>
-          <span className="cta-seal" aria-hidden="true">煞</span>
+          <span className="cta-seal" aria-hidden="true">書</span>
+          <span className="cta-label">우리 아이 재능 확인하기</span>
+          <span className="cta-seal" aria-hidden="true">堂</span>
         </button>
+        <p className="intro-cta-note">무료 진단 · 3분 · 생년월일시만 있으면 됩니다</p>
       </div>
     </section>
   );
 }
 
-// ---------------- 1. 귀신 대화형 입력 ----------------
-function GhostFlow({ step, form, setForm, goto, onSubmit }) {
+// ---------------- 1. 훈장님 문답 ----------------
+function TeacherFlow({ step, form, setForm, goto, onSubmit }) {
   const idx = INPUT_STEPS.indexOf(step);
   const next = () => goto(INPUT_STEPS[idx + 1]);
 
   const rows = [];
-  if (form.name && step !== "name") rows.push({ k: "이름", v: form.name, s: "name" });
-  if (form.phone && idx > INPUT_STEPS.indexOf("phone")) rows.push({ k: "전화번호", v: form.phone, s: "phone" });
+  if (form.name && step !== "name") rows.push({ k: "아이 이름", v: form.name, s: "name" });
+  if (form.phone && idx > INPUT_STEPS.indexOf("phone")) rows.push({ k: "연락처", v: form.phone, s: "phone" });
   if (form.slot != null && idx > INPUT_STEPS.indexOf("time")) rows.push({ k: "생시", v: TIME_SLOTS[form.slot].label, s: "time" });
   if (form.y && idx > INPUT_STEPS.indexOf("birth")) rows.push({ k: "생년월일", v: `${form.y}년 ${form.m}월 ${form.d}일 (${form.cal === "solar" ? "양력" : "음력"})`, s: "birth" });
-  if (form.gender && idx > INPUT_STEPS.indexOf("gender")) rows.push({ k: "성별", v: form.gender === "M" ? "남자" : "여자", s: "gender" });
+  if (form.gender && idx > INPUT_STEPS.indexOf("gender")) rows.push({ k: "성별", v: form.gender === "M" ? "아들" : "딸", s: "gender" });
 
-  const G = GHOST[step];
+  const T = TEACHER[step];
 
   return (
-    <section className="ghost-stage">
-      <div className="ghost-head">
-        {step === "gender" && <p className="ghost-say">{GHOST.intro.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</p>}
+    <section className="seodang-stage">
+      <div className="sd-head">
+        {step === "gender" && <p className="sd-say">{TEACHER.intro.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</p>}
         {step !== "gender" && (
           <>
-            <h2 className="ghost-q">{G.q}</h2>
-            {G.sub && <p className="ghost-sub">{G.sub}</p>}
+            <h2 className="sd-q">{T.q}</h2>
+            {T.sub && <p className="sd-sub">{T.sub}</p>}
           </>
         )}
       </div>
 
-      {/* 입력 영역 */}
-      <div className="ghost-input">
+      <div className="sd-input">
         {step === "birth" && <BirthInput form={form} setForm={setForm} onDone={next} />}
         {step === "time" && <TimeInput form={form} setForm={setForm} onDone={next} />}
         {step === "phone" && <PhoneInput form={form} setForm={setForm} onDone={next} />}
         {step === "name" && <NameInput form={form} setForm={setForm} onDone={onSubmit} />}
       </div>
 
-      {/* 이전 입력값 */}
       {rows.length > 0 && (
-        <div className="ghost-rows">
+        <div className="sd-rows">
           {rows.map((r) => (
             <div className="g-row" key={r.k}>
               <span className="g-k">{r.k}</span>
@@ -171,22 +169,17 @@ function GhostFlow({ step, form, setForm, goto, onSubmit }) {
         </div>
       )}
 
-      {/* 도깨비불 */}
-      <div className="ghost-flame-wrap" aria-hidden="true">
-        <img src="/ghost.png" alt="" className="ghost-img" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-        <div className="soul-flame">
-          <div className="flame f1" /><div className="flame f2" /><div className="flame f3" />
-          <div className="flame-core" />
-          <div className="eye e1" /><div className="eye e2" />
-        </div>
+      {/* 훈장님 — 수묵 일원상 (public/teacher.png 넣으면 이미지로 대체) */}
+      <div className="teacher-wrap" aria-hidden="true">
+        <img src="/teacher.png" alt="" className="teacher-img" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+        <div className="ink-circle"><span className="ink-glyph">命</span></div>
       </div>
 
-      {/* 성별 하단 시트 */}
       {step === "gender" && (
         <div className="gender-sheet">
-          <h2 className="sheet-q">{GHOST.gender.q}</h2>
-          <button className="sheet-btn" onClick={() => { setForm({ ...form, gender: "M" }); ev("gender_set"); next(); }}>남자예요</button>
-          <button className="sheet-btn" onClick={() => { setForm({ ...form, gender: "F" }); ev("gender_set"); next(); }}>여자예요</button>
+          <h2 className="sheet-q">{TEACHER.gender.q}</h2>
+          <button className="sheet-btn" onClick={() => { setForm({ ...form, gender: "M" }); ev("gender_set"); next(); }}>아들이에요</button>
+          <button className="sheet-btn" onClick={() => { setForm({ ...form, gender: "F" }); ev("gender_set"); next(); }}>딸이에요</button>
         </div>
       )}
     </section>
@@ -202,7 +195,7 @@ function BirthInput({ form, setForm, onDone }) {
   const valid = (() => {
     if (digits.length !== 8) return false;
     const y = +digits.slice(0, 4), m = +digits.slice(4, 6), d = +digits.slice(6, 8);
-    if (y < 1920 || y > new Date().getFullYear()) return false;
+    if (y < 1980 || y > new Date().getFullYear()) return false;
     if (m < 1 || m > 12 || d < 1 || d > 31) return false;
     return true;
   })();
@@ -219,7 +212,7 @@ function BirthInput({ form, setForm, onDone }) {
         <button className={form.cal === "lunar" ? "on" : ""} onClick={() => setForm({ ...form, cal: "lunar" })}>음력</button>
       </div>
       <input
-        className="ghost-field"
+        className="sd-field"
         inputMode="numeric"
         placeholder="0000년 00월 00일"
         value={disp}
@@ -228,11 +221,11 @@ function BirthInput({ form, setForm, onDone }) {
         autoFocus
       />
       {form.cal === "lunar" && (
-        <label className="ghost-check">
+        <label className="sd-check">
           <input type="checkbox" checked={form.leap} onChange={(e) => setForm({ ...form, leap: e.target.checked })} /> 윤달
         </label>
       )}
-      <button className="ghost-next" disabled={!valid} onClick={commit}>다음</button>
+      <button className="sd-next" disabled={!valid} onClick={commit}>다음</button>
     </div>
   );
 }
@@ -263,7 +256,7 @@ function PhoneInput({ form, setForm, onDone }) {
   return (
     <div>
       <input
-        className="ghost-field"
+        className="sd-field"
         inputMode="tel"
         placeholder="010-0000-0000"
         value={disp}
@@ -271,7 +264,7 @@ function PhoneInput({ form, setForm, onDone }) {
         onKeyDown={(e) => e.key === "Enter" && commit()}
         autoFocus
       />
-      <button className="ghost-next" disabled={!valid} onClick={commit}>다음</button>
+      <button className="sd-next" disabled={!valid} onClick={commit}>다음</button>
     </div>
   );
 }
@@ -281,18 +274,18 @@ function NameInput({ form, setForm, onDone }) {
   return (
     <div>
       <input
-        className="ghost-field"
-        placeholder="이름"
+        className="sd-field"
+        placeholder="이름 또는 태명"
         value={form.name}
         onChange={(e) => setForm({ ...form, name: e.target.value.slice(0, 12) })}
         autoFocus
       />
-      <label className="ghost-check">
+      <label className="sd-check">
         <input type="checkbox" checked={form.consent} onChange={(e) => setForm({ ...form, consent: e.target.checked })} />
         <span><a href="/privacy" target="_blank">개인정보 수집·이용</a> 동의 (풀이 산출·전달 목적)</span>
       </label>
-      <button className="ghost-cta" disabled={!valid} onClick={() => { ev("name_set"); onDone(); }}>
-        깃든 살 확인하기 <span style={{ marginLeft: 6 }}>›</span>
+      <button className="sd-cta" disabled={!valid} onClick={() => { ev("name_set"); onDone(); }}>
+        타고난 재능 확인하기 <span style={{ marginLeft: 6 }}>›</span>
       </button>
     </div>
   );
@@ -301,60 +294,88 @@ function NameInput({ form, setForm, onDone }) {
 // ---------------- 2. 확인 중 ----------------
 function Checking() {
   return (
-    <section className="ghost-stage" style={{ justifyContent: "center" }}>
-      <p className="ghost-say" style={{ fontSize: 26 }}>{GHOST.checking}</p>
-      <div className="ghost-flame-wrap checking" aria-hidden="true">
-        <div className="soul-flame">
-          <div className="flame f1" /><div className="flame f2" /><div className="flame f3" />
-          <div className="flame-core" />
-          <div className="eye e1" /><div className="eye e2" />
-        </div>
+    <section className="seodang-stage" style={{ justifyContent: "center", alignItems: "center" }}>
+      <p className="sd-say" style={{ fontSize: 24 }}>{TEACHER.checking.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</p>
+      <div className="teacher-wrap" style={{ position: "relative", left: "auto", top: "auto", transform: "none", marginTop: 30 }} aria-hidden="true">
+        <div className="ink-circle spinning"><span className="ink-glyph">命</span></div>
       </div>
     </section>
   );
 }
 
-// ---------------- 3. 진단 (일부 공개 + 블러) ----------------
+// ---------------- 3. 재능 진단 (무료 + 잠금) ----------------
 function firstSentence(text) {
   const m = text.match(/^.*?다\./);
   return m ? m[0] : text.slice(0, 40);
 }
 
 function Diagnosis({ saju, name, onPay }) {
-  const sals = useMemo(() => salList(saju).filter((s) => !s.good), [saju]);
-  const first = sals[0];
-  useEffect(() => { ev("diag_view", { salCount: sals.length }); }, []); // eslint-disable-line
+  const tp = useMemo(() => talentProfile(saju), [saju]);
+  const rm = useMemo(() => schoolRoadmap(saju), [saju]);
+  const blockers = tp.blockers;
+  const first = blockers[0];
+  useEffect(() => { ev("diag_view", { grade: tp.grade.key, blockers: blockers.length }); }, []); // eslint-disable-line
 
   return (
     <section className="diag">
-      <p className="red-script">{(sals.length ? GHOST.diag1 : GHOST.diagNoSal).split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</p>
+      <p className="brush-script">{TEACHER.diag1.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</p>
 
-      {first && (
-        <>
-          <p className="diag-salname">
-            {name ? `${name}, ` : ""}네 몸에 깃든 살 — <b>{sals.length}개</b><br />
-            <span className="diag-first">그중 하나는 <b>{first.name}살({first.hanja})</b></span>
-          </p>
-          <div className="diag-card">
-            <h3>이 살이 미치는 영향</h3>
-            <p className="diag-open">{firstSentence(first.desc)}</p>
-            <p className="diag-blur">
-              {first.desc.slice(firstSentence(first.desc).length)} 이 살이 발동하는 시기는 대운과 세운이 맞물리는 해로, 특히 앞으로 다가올 몇 해 중 한 해에 크게 움직일 조짐이 보인다. 그 해에 무엇을 조심해야 하는지, 어떤 결정을 미뤄야 하는지는 정식 살풀이에서 낱낱이 다룬다.
-            </p>
+      {/* 등급 카드 — 무료 */}
+      <div className="grade-card">
+        <div className="eyebrow" style={{ marginBottom: 10 }}>{name ? `${name} — ` : ""}타고난 재능 등급</div>
+        <div className="grade-hanja">{tp.grade.key}</div>
+        <p className="grade-name">{tp.grade.name}</p>
+        <p className="grade-line">“{tp.grade.line}”</p>
+      </div>
+
+      {/* 재능 유형 — 무료 */}
+      <div className="diag-card">
+        <h3><span className="dc-hanja">{tp.type.hanja}</span> 재능 유형 — {tp.type.name}</h3>
+        <p className="diag-open">{tp.type.desc}</p>
+        {tp.stars.length > 0 && (
+          <div className="star-box">
+            {tp.stars.map((s) => <p key={s.name} className="star-line">◉ {s.desc}</p>)}
           </div>
-        </>
-      )}
+        )}
+      </div>
 
-      {sals.length > 1 && (
+      <p className="brush-script">{(blockers.length ? TEACHER.diag2 : TEACHER.diag2none).split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</p>
+
+      {/* 공부살 — 잠금 */}
+      {first && (
         <div className="diag-card">
-          <h3>아직 열지 않은 살 — {sals.length - 1}개</h3>
+          <h3><span className="dc-hanja">煞</span> 이 아이의 학업을 막는 살 — {blockers.length}개</h3>
+          <p className="diag-open">
+            그중 하나는 <b>{first.name}살({first.hanja})</b> — {first.short}.
+          </p>
+          <p className="diag-open">{firstSentence(first.desc)}</p>
           <p className="diag-blur">
-            {sals.slice(1).map((s) => `${s.name}살(${s.hanja}) — ${s.short}. ${s.desc}`).join(" ")}
+            {first.desc.slice(firstSentence(first.desc).length)} 이 살이 크게 발동하기 쉬운 시기는 학령기 중에서도 특정 구간에 몰려 있으며, 그 시기에 부모가 어떻게 대응하느냐에 따라 성적의 궤도가 갈립니다. 구체적인 시기와 지도법은 정식 리포트에서 낱낱이 다룹니다.
+          </p>
+        </div>
+      )}
+      {blockers.length > 1 && (
+        <div className="diag-card">
+          <h3><span className="dc-hanja">封</span> 아직 열지 않은 살 — {blockers.length - 1}개</h3>
+          <p className="diag-blur">
+            {blockers.slice(1).map((b) => `${b.name}살(${b.hanja}) — ${b.short}. ${b.desc}`).join(" ")}
           </p>
         </div>
       )}
 
-      <p className="red-script">{GHOST.diag2.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</p>
+      {/* 결정적 시기 — 잠금 (수능 해 티저) */}
+      <div className="diag-card">
+        <h3><span className="dc-hanja">曆</span> 결정적 시기</h3>
+        <p className="diag-open">
+          이 아이의 수능 해는 <b>{rm.suneung}년</b>입니다.
+          {rm.turns.length > 0 && <> 그리고 학령기 중 <b>{rm.turns[0].year}년</b>, 10년짜리 대운이 통째로 바뀝니다.</>}
+        </p>
+        <p className="diag-blur">
+          그 해의 기운이 이 아이의 공부에 어떤 바람으로 부는지, 초등·중등·고등 각 구간에서 무엇에 힘을 싣고 무엇을 내려놓아야 하는지, 시기별 전략은 정식 리포트의 로드맵 편에서 연도별로 다룹니다.
+        </p>
+      </div>
+
+      <p className="brush-script" style={{ fontSize: 40 }}>{TEACHER.diag3.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</p>
 
       <div style={{ height: 110 }} />
       <OfferBar onPay={onPay} />
@@ -367,10 +388,10 @@ function useCountdown() {
   useEffect(() => {
     let deadline;
     try {
-      deadline = Number(localStorage.getItem("hs_deadline"));
+      deadline = Number(localStorage.getItem("md_deadline"));
       if (!deadline || deadline < Date.now()) {
         deadline = Date.now() + OFFER.DISCOUNT_HOURS * 3600 * 1000;
-        localStorage.setItem("hs_deadline", String(deadline));
+        localStorage.setItem("md_deadline", String(deadline));
       }
     } catch (e) {
       deadline = Date.now() + OFFER.DISCOUNT_HOURS * 3600 * 1000;
@@ -403,7 +424,7 @@ function OfferBar({ onPay }) {
 }
 
 // ---------------- 4. 결제 ----------------
-function Payment({ saju }) {
+function Payment() {
   const [method, setMethod] = useState("naver");
   const price = CONFIG.PRICE;
   const orig = CONFIG.PRICE_ORIGINAL;
@@ -421,6 +442,17 @@ function Payment({ saju }) {
   return (
     <section className="pay">
       <div className="pay-panel">
+        <div className="pay-head">
+          <span className="pay-brand">{CONFIG.BRAND_HANJA}</span>
+          <b>진로·학업 종합 리포트</b>
+        </div>
+
+        <div className="pay-items">
+          {REPORT_ITEMS.map((it) => (
+            <p key={it.label}><span className="pi-hanja">{it.hanja}</span> {it.label}</p>
+          ))}
+        </div>
+
         {METHODS.map((mth) => (
           <label className="pay-method" key={mth.id}>
             <input type="radio" name="method" checked={method === mth.id} onChange={() => setMethod(mth.id)} />
@@ -430,17 +462,19 @@ function Payment({ saju }) {
         ))}
 
         <div className="pay-proof">
-          {SOCIAL_PROOF.enabled ? (
-            <p className="proof-nums">
-              🌿 누적구매 <b>{SOCIAL_PROOF.buyers}명</b> · 고객만족도 <b>{SOCIAL_PROOF.satisfaction}%</b> 🌿
-            </p>
-          ) : null}
-          <p className="proof-line">좋지 않은 팔자도 <b>솔직하게</b> 알려드려요</p>
+          {SOCIAL_PROOF.enabled && (
+            <p className="proof-nums">🌿 누적구매 <b>{SOCIAL_PROOF.buyers}명</b> · 고객만족도 <b>{SOCIAL_PROOF.satisfaction}%</b> 🌿</p>
+          )}
+          <p className="proof-line">좋은 말만 하지 않습니다. <b>막는 살까지 전부</b> 말씀드립니다.</p>
+        </div>
+
+        <div className="pay-trust">
+          {TRUST.map((t) => <p key={t}>✓ {t}</p>)}
         </div>
 
         <div className="pay-table">
           <div className="pt-row">
-            <span>{CONFIG.BRAND} 살풀이 사주</span>
+            <span>{CONFIG.BRAND} 자녀 리포트</span>
             <span className="pt-strike">{orig.toLocaleString("ko-KR")}원</span>
           </div>
           <div className="pt-row pt-red">
@@ -468,9 +502,11 @@ function Payment({ saju }) {
           카카오톡 채널 추가하기
         </a>
 
+        <p className="pay-upsell">추가 구성(별도): {UPSELL.join(" · ")}</p>
+
         <p className="pay-fine">
           결제 정보를 확인했으며 <a href="/privacy" target="_blank">개인정보 수집 및 이용</a>, 환불 정책(수신 후 24시간 내 요청 시 전액 환불)에 동의합니다.
-          본 콘텐츠는 명리학 이론 기반 참고용이며 의학적·법률적·투자 판단의 근거가 될 수 없습니다.
+          본 콘텐츠는 명리학 이론 기반 참고용이며 교육적·의학적 판단의 유일한 근거가 될 수 없습니다.
         </p>
       </div>
     </section>

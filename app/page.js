@@ -1,7 +1,7 @@
 "use client";
 import { useState, useMemo, useRef, useEffect } from "react";
 import { computeSaju, GAN, GAN_HANJA, JI, JI_HANJA, GAN_ELEM, JI_ELEM, ELEM_NAME, ELEM_HANJA, REGIONS, JI_MAIN_GAN } from "../lib/engine";
-import { iljuCharacter, bluntLine, buildQuiz, buildTeaser } from "../lib/insights";
+import { iljuCharacter, bluntLine, buildQuiz, buildTeaser, salList } from "../lib/insights";
 import { SECTIONS, buildFacts } from "../lib/report";
 import { CONFIG, TEASER } from "../lib/content";
 import { track } from "@vercel/analytics";
@@ -68,23 +68,28 @@ function Steps({ step }) {
 // ---------------- 0. 인트로 ----------------
 function Intro({ onStart }) {
   return (
-    <section className="fade-up" style={{ padding: "48px 0 30px", textAlign: "center" }}>
+    <section className="fade-up" style={{ padding: "56px 0 30px", textAlign: "center" }}>
       <div className="eyebrow">{CONFIG.BRAND_HANJA}</div>
-      <h1 className="display" style={{ fontSize: 44, lineHeight: 1.3, margin: "18px 0 10px" }}>
-        믿지 마세요,<br />
-        <span style={{ color: "var(--seal)" }}>검증</span>하세요.
+      <h1 className="display candle" style={{ fontSize: 38, lineHeight: 1.45, margin: "22px 0 14px" }}>
+        당신 사주에 박힌<br />
+        <span style={{ color: "var(--blood-bright)", textShadow: "0 0 24px rgba(214,56,42,0.4)" }}>살(煞)</span>,<br />
+        몇 개인지 아십니까
       </h1>
-      <p style={{ color: "var(--ink-soft)", fontSize: 16, maxWidth: 400, margin: "0 auto 8px" }}>
-        긴 설명은 하지 않겠습니다. 3초 만에 당신의 사주 원국을 계산해 보여드리고,
-        <b style={{ color: "var(--ink)" }}> 당신이 이미 살아온 과거</b>로 정확도를 직접 확인시켜 드리겠습니다.
+      <p style={{ color: "var(--ash)", fontSize: 15.5, maxWidth: 420, margin: "0 auto 8px" }}>
+        무서운 이야기를 지어내지 않습니다.<br />
+        당신의 원국에서 <b style={{ color: "var(--talisman)" }}>계산된 살만</b> 보여드리고,
+        그 살이 실제로 움직였던 해를 — <b style={{ color: "var(--talisman)" }}>당신의 과거로 확인</b>시켜 드립니다.
       </p>
-      <p className="mono" style={{ fontSize: 12, color: "var(--ink-soft)", margin: "18px 0 26px", letterSpacing: "0.06em" }}>
-        천문 계산 절기 시각(분 단위) · 출생지 경도 보정 · 서머타임 반영
+      <p className="display" style={{ fontSize: 16, color: "var(--ash-dim)", margin: "20px 0 6px" }}>
+        무서운 건 살이 아닙니다.
+      </p>
+      <p className="display" style={{ fontSize: 20, color: "var(--blood-bright)", margin: "0 0 28px" }}>
+        맞는다는 겁니다.
       </p>
       <button className="btn btn-seal" style={{ maxWidth: 340 }} onClick={() => { ev("cta_start"); onStart(); }}>
-        내 사주 계산하기 — 무료
+        무료 흉살 검사 시작
       </button>
-      <p style={{ fontSize: 12.5, color: "var(--ink-soft)", marginTop: 12 }}>회원가입 없음 · 생년월일시만 필요합니다</p>
+      <p style={{ fontSize: 12.5, color: "var(--ash-dim)", marginTop: 12 }}>회원가입 없음 · 3초 · 생년월일시만 필요합니다</p>
     </section>
   );
 }
@@ -140,9 +145,9 @@ function InputForm({ onComputed }) {
   const selStyle = {};
   return (
     <section className="fade-up" style={{ padding: "10px 0 40px" }}>
-      <h2 className="display" style={{ fontSize: 26, marginBottom: 4 }}>생년월일시를 입력하세요</h2>
-      <p style={{ fontSize: 14, color: "var(--ink-soft)", marginBottom: 22 }}>
-        입력하는 순간, 표준 만세력 기준의 원국이 계산됩니다.
+      <h2 className="display" style={{ fontSize: 26, marginBottom: 4, color: "var(--talisman)" }}>검사 대상 정보</h2>
+      <p style={{ fontSize: 14, color: "var(--ash-dim)", marginBottom: 22 }}>
+        입력하는 순간, 표준 만세력 기준으로 원국을 계산하고 살을 검출합니다.
       </p>
 
       <div className="toggle-row" style={{ marginBottom: 16 }}>
@@ -205,29 +210,35 @@ function InputForm({ onComputed }) {
         </div>
       </div>
 
-      {err && <p style={{ color: "var(--seal)", fontSize: 14, marginBottom: 12 }}>{err}</p>}
-      <button className="btn btn-seal" onClick={submit}>원국 계산하기</button>
-      <p style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 12, textAlign: "center" }}>
+      {err && <p style={{ color: "var(--blood-bright)", fontSize: 14, marginBottom: 12 }}>{err}</p>}
+      <button className="btn btn-seal" onClick={submit}>흉살 검사 실행</button>
+      <p style={{ fontSize: 12, color: "var(--ash-dim)", marginTop: 12, textAlign: "center" }}>
         입력한 정보는 계산에만 사용되며 서버에 저장되지 않습니다.
       </p>
     </section>
   );
 }
 
-// ---------------- 2. 명식 공개 ----------------
+// ---------------- 2. 검사 결과 (명식 + 살 검출) ----------------
 function Reveal({ saju, onNext }) {
   const ch = useMemo(() => iljuCharacter(saju), [saju]);
   const blunt = useMemo(() => bluntLine(saju), [saju]);
+  const sals = useMemo(() => salList(saju), [saju]);
+  const badSals = sals.filter((s) => !s.good);
   const total = saju.elemCount.reduce((a, b) => a + b, 0);
-  const order = ["hour", "day", "month", "year"]; // 관례상 우측이 년주 → 좌→우: 시일월년
+  const order = ["hour", "day", "month", "year"];
   const label = { hour: "시주 時", day: "일주 日", month: "월주 月", year: "년주 年" };
+  const sj = saju.samjae;
 
   return (
     <section className="fade-up" style={{ padding: "6px 0 40px" }}>
-      <div className="eyebrow" style={{ textAlign: "center" }}>당신의 원국</div>
-      <h2 className="display" style={{ fontSize: 24, textAlign: "center", margin: "10px 0 22px" }}>
+      <div className="eyebrow" style={{ textAlign: "center" }}>검사 결과</div>
+      <h2 className="display" style={{ fontSize: 22, textAlign: "center", margin: "10px 0 6px", color: "var(--ash)" }}>
         {saju.input.dateStr} {saju.input.hour != null ? `${String(saju.input.hour).padStart(2, "0")}:${String(saju.input.minute).padStart(2, "0")}` : "(시간 미상)"} 출생
       </h2>
+      <p className="display candle" style={{ textAlign: "center", fontSize: 26, marginBottom: 22 }}>
+        살(煞) <span style={{ color: "var(--blood-bright)" }}>{badSals.length}개</span> 검출
+      </p>
 
       <div className="pillar-grid" style={{ marginBottom: 10 }}>
         {order.map((k, i) => {
@@ -238,41 +249,86 @@ function Reveal({ saju, onNext }) {
               {p ? (
                 <>
                   <div className={"seal-block" + (k === "day" ? " seal-day" : "")} style={{ animationDelay: `${i * 0.18}s` }}>
-                    <span className="hanja" style={{ color: ELEM_COLOR[GAN_ELEM[p.gan]] }}>{GAN_HANJA[p.gan]}</span>
+                    <span className="hanja">{GAN_HANJA[p.gan]}</span>
                     <span className="hangul">{GAN[p.gan]}</span>
                     <span className="ss">{k === "day" ? "나" : saju.sipseongOfGan(p.gan)}</span>
                   </div>
                   <div className={"seal-block" + (k === "day" ? " seal-day" : "")} style={{ animationDelay: `${i * 0.18 + 0.09}s` }}>
-                    <span className="hanja" style={{ color: ELEM_COLOR[JI_ELEM[p.ji]] }}>{JI_HANJA[p.ji]}</span>
+                    <span className="hanja">{JI_HANJA[p.ji]}</span>
                     <span className="hangul">{JI[p.ji]}</span>
                     <span className="ss">{saju.sipseongOfJi(p.ji)}</span>
                   </div>
                 </>
               ) : (
-                <div style={{ border: "1.5px dashed #c9c0ab", padding: "34px 4px", color: "#b3a98f", fontSize: 12 }}>시간<br />미상</div>
+                <div style={{ border: "1.5px dashed #3a332b", padding: "34px 4px", color: "#52493c", fontSize: 12 }}>시간<br />미상</div>
               )}
             </div>
           );
         })}
       </div>
-      <p className="mono" style={{ fontSize: 11, color: "var(--ink-soft)", textAlign: "center", marginBottom: 26 }}>
+      <p className="mono" style={{ fontSize: 11, color: "var(--ash-dim)", textAlign: "center", marginBottom: 26 }}>
         {saju.corr.notes.join(" · ")} 적용됨
       </p>
 
+      {/* 삼재 경고 */}
+      {sj?.next && (
+        <div className="card" style={{ borderColor: sj.inNow ? "var(--blood)" : "#2e2820", marginBottom: 18, textAlign: "center" }}>
+          {sj.inNow ? (
+            <>
+              <div className="eyebrow" style={{ marginBottom: 8 }}>三災 경보</div>
+              <p className="display" style={{ fontSize: 21, color: "var(--blood-bright)" }}>
+                당신은 지금 삼재 한가운데에 있습니다
+              </p>
+              <p className="mono" style={{ fontSize: 12.5, color: "var(--ash-dim)", marginTop: 6 }}>
+                {sj.next[0]} — {sj.next[2]}년 · 들삼재/눌삼재/날삼재
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="eyebrow" style={{ marginBottom: 8 }}>三災 예보</div>
+              <p className="display" style={{ fontSize: 19, color: "var(--talisman)" }}>
+                다음 삼재: {sj.next[0]}년 진입
+              </p>
+              <p className="mono" style={{ fontSize: 12.5, color: "var(--ash-dim)", marginTop: 6 }}>
+                {sj.next[0]} — {sj.next[2]}년, 3년간 이어집니다
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* 살 검출 목록 */}
+      <div className="card" style={{ marginBottom: 18 }}>
+        <div className="eyebrow" style={{ marginBottom: 14 }}>검출된 살 — {sals.length}건</div>
+        {sals.length === 0 && (
+          <p style={{ fontSize: 15 }}>
+            원국에서 뚜렷한 살이 검출되지 않았습니다. 드문 경우입니다 — 다만 살이 없다는 것과 흐름이 없다는 것은 다릅니다. 아래 검증으로 확인하세요.
+          </p>
+        )}
+        {sals.map((s) => (
+          <div className={"sal-item" + (s.good ? " sal-good" : "")} key={s.name}>
+            <span className="sal-name">{s.name}</span>
+            <span className="sal-hanja">{s.hanja}</span>
+            <p className="sal-short">— {s.short}</p>
+            <p className="sal-desc">{s.desc}</p>
+          </div>
+        ))}
+      </div>
+
       {/* 오행 분포 */}
       <div className="card" style={{ marginBottom: 18 }}>
-        <div className="eyebrow" style={{ marginBottom: 12 }}>오행 분포</div>
+        <div className="eyebrow" style={{ marginBottom: 12 }}>오행 — 비어있는 자리를 보십시오</div>
         {saju.elemCount.map((c, i) => (
           <div className="elem-row" key={i}>
             <span className="e-name">{ELEM_NAME[i]} {ELEM_HANJA[i]}</span>
             <div className="elem-bar-bg">
               <div className="elem-bar" style={{ width: `${(c / total) * 100}%`, background: ELEM_COLOR[i] }} />
             </div>
-            <span className="e-count">{c}</span>
+            <span className="e-count">{c === 0 ? <span className="elem-empty">空</span> : c}</span>
           </div>
         ))}
-        <p style={{ fontSize: 13.5, color: "var(--ink-soft)", marginTop: 12 }}>
-          일간 <b style={{ color: "var(--ink)" }}>{GAN[saju.pillars.day.gan]}{ELEM_HANJA[saju.myElem]}</b> ·
+        <p style={{ fontSize: 13.5, color: "var(--ash-dim)", marginTop: 12 }}>
+          일간 <b style={{ color: "var(--talisman)" }}>{GAN[saju.pillars.day.gan]}{ELEM_HANJA[saju.myElem]}</b> ·
           {saju.strong ? " 신강한 구조 — 스스로 끌고 가는 힘이 강한 사주입니다." : " 신약한 구조 — 환경과 사람의 도움이 중요한 사주입니다."}
         </p>
       </div>
@@ -280,17 +336,12 @@ function Reveal({ saju, onNext }) {
       {/* 일주 캐릭터 */}
       <div className="card" style={{ marginBottom: 18 }}>
         <div className="eyebrow" style={{ marginBottom: 8 }}>{ch.ganzi}</div>
-        <h3 className="display" style={{ fontSize: 24, lineHeight: 1.4, marginBottom: 12 }}>“{ch.name}”</h3>
+        <h3 className="display" style={{ fontSize: 24, lineHeight: 1.4, marginBottom: 12, color: "var(--talisman)" }}>“{ch.name}”</h3>
         <p style={{ fontSize: 15.5 }}>{ch.text}</p>
-        {ch.badges.length > 0 && (
-          <p className="mono" style={{ fontSize: 12, color: "var(--seal)", marginTop: 14, lineHeight: 2 }}>
-            {ch.badges.map((b) => `◉ ${b}`).join("  ")}
-          </p>
-        )}
       </div>
 
       {/* 직언 */}
-      <div className="card" style={{ borderLeft: "4px solid var(--seal)", marginBottom: 28 }}>
+      <div className="card" style={{ borderLeft: "4px solid var(--blood)", marginBottom: 28 }}>
         <div className="eyebrow" style={{ marginBottom: 10 }}>좋은 말은 생략합니다</div>
         {blunt.map((line, i) => (
           <p key={i} style={{ fontSize: 15.5, marginBottom: i < blunt.length - 1 ? 12 : 0 }}>{line}</p>
@@ -298,11 +349,11 @@ function Reveal({ saju, onNext }) {
       </div>
 
       <p style={{ textAlign: "center", fontSize: 15, marginBottom: 14 }}>
-        여기까지는 누구나 하는 이야기라고요?<br />
-        <b>그럼 지금부터, 당신의 과거를 맞혀보겠습니다.</b>
+        여기까지는 종이 위의 글자입니다.<br />
+        <b style={{ color: "var(--talisman)" }}>이 살들이 실제로 움직였는지 — 당신의 과거로 판정하십시오.</b>
       </p>
       <button className="btn" onClick={() => { ev("cta_quiz"); onNext(); }}>
-        과거 검증 시작 — 5문항
+        살 발동 검증 시작 — 5문항
       </button>
     </section>
   );
@@ -316,17 +367,17 @@ function Quiz({ saju, quiz, answers, setAnswers, onNext }) {
 
   return (
     <section className="fade-up" style={{ padding: "6px 0 40px" }}>
-      <div className="eyebrow" style={{ textAlign: "center" }}>과거 검증</div>
-      <h2 className="display" style={{ fontSize: 24, textAlign: "center", margin: "10px 0 6px" }}>
-        당신의 대운과 세운이<br />말하는 지난 시간들
+      <div className="eyebrow" style={{ textAlign: "center" }}>발동 검증</div>
+      <h2 className="display candle" style={{ fontSize: 24, textAlign: "center", margin: "10px 0 6px" }}>
+        이 살들이 움직였던 해를<br />맞혀보겠습니다
       </h2>
-      <p style={{ textAlign: "center", fontSize: 14, color: "var(--ink-soft)", marginBottom: 24 }}>
-        아래는 광고 문구가 아니라, 당신의 명식에서 계산된 진술입니다.<br />솔직하게 답해주세요.
+      <p style={{ textAlign: "center", fontSize: 14, color: "var(--ash-dim)", marginBottom: 24 }}>
+        아래는 지어낸 문장이 아니라, 당신의 명식에서 계산된 진술입니다.<br />솔직하게 판정해주세요.
       </p>
 
       {quiz.map((q, i) => (
         <div className="card quiz-card" key={i} style={{ marginBottom: 14 }}>
-          {answers[i] === true && <div className="stamp-hit">적중</div>}
+          {answers[i] === true && <div className="stamp-hit">발동</div>}
           <div className="quiz-num">問 {i + 1} / {quiz.length}{q.year ? ` · ${q.year}년` : ""}</div>
           <p className="quiz-text">{q.text}</p>
           <div className="quiz-btns">
@@ -345,15 +396,15 @@ function Quiz({ saju, quiz, answers, setAnswers, onNext }) {
       {done && (
         <div className="fade-up" style={{ textAlign: "center", marginTop: 26 }}>
           <p className="display" style={{ fontSize: 30, marginBottom: 6 }}>
-            {quiz.length}문항 중 <span style={{ color: "var(--seal)" }}>{hits}개 적중</span>
+            {quiz.length}문항 중 <span style={{ color: "var(--blood-bright)" }}>{hits}개 발동 확인</span>
           </p>
-          <p style={{ fontSize: 14.5, color: "var(--ink-soft)", marginBottom: 20 }}>
-            {hits >= 4 && "당신의 과거가 이미 증명했습니다. 이 명식은 당신의 이야기가 맞습니다."}
-            {hits === 3 && "절반 이상이 일치합니다. 이 명식은 당신의 흐름을 읽고 있습니다."}
-            {hits <= 2 && "일치율이 낮게 나왔습니다. 출생 시간이 부정확하거나 절입일 경계 출생일 가능성이 있습니다 — 정식 풀이에서는 시간 보정 진단을 함께 제공합니다."}
+          <p style={{ fontSize: 14.5, color: "var(--ash-dim)", marginBottom: 20 }}>
+            {hits >= 4 && "부정할 수 없게 됐습니다. 이 살들은 종이 위의 글자가 아니라, 당신의 인생에서 실제로 움직여 왔습니다."}
+            {hits === 3 && "절반 이상이 발동 확인됐습니다. 이 명식은 당신의 흐름을 읽고 있습니다."}
+            {hits <= 2 && "발동 일치율이 낮게 나왔습니다. 출생 시간이 부정확하거나 절입일 경계 출생일 가능성이 있습니다 — 정식 살풀이에서는 시간 보정 진단을 함께 제공합니다."}
           </p>
           <button className="btn btn-seal" onClick={() => { ev("cta_teaser", { hits }); onNext(); }}>
-            그럼, 앞으로의 5년은? →
+            그럼 — 다음 발동은 언제입니까 →
           </button>
         </div>
       )}
@@ -371,22 +422,22 @@ function Teaser({ saju, answers, quiz, onRestart, onReport }) {
   return (
     <section className="fade-up" style={{ padding: "6px 0 40px" }}>
       <div className="eyebrow" style={{ textAlign: "center" }}>개봉 전</div>
-      <h2 className="display" style={{ fontSize: 25, textAlign: "center", margin: "10px 0 8px" }}>
-        향후 5년, 당신의 명식에서<br />
-        <span style={{ color: "var(--seal)" }}>위험 신호 {t.risks.length}개</span>와{" "}
-        <span style={{ color: "var(--elem-wood)" }}>기회의 문 {t.opps.length}개</span>가<br />계산되었습니다
+      <h2 className="display candle" style={{ fontSize: 25, textAlign: "center", margin: "10px 0 8px" }}>
+        향후 5년,<br />
+        <span style={{ color: "var(--blood-bright)" }}>발동 경보 {t.risks.length}건</span>과{" "}
+        <span style={{ color: "var(--talisman)" }}>열리는 문 {t.opps.length}개</span>가<br />계산되었습니다
       </h2>
-      <p style={{ textAlign: "center", fontSize: 14, color: "var(--ink-soft)", marginBottom: 24 }}>
+      <p style={{ textAlign: "center", fontSize: 14, color: "var(--ash-dim)", marginBottom: 24 }}>
         {hits >= 3
-          ? `과거 ${hits}개를 맞힌 그 계산이, 앞으로의 시간에도 똑같이 적용됩니다.`
-          : "과거를 계산한 것과 같은 방식으로, 미래의 흐름이 계산됩니다."}
+          ? `과거 ${hits}건의 발동을 맞힌 그 계산이, 앞으로의 시간에도 똑같이 적용됩니다.`
+          : "과거를 계산한 것과 같은 방식으로, 미래의 발동이 계산됩니다."}
       </p>
 
       {firstRisk && (
         <div className="card locked" style={{ marginBottom: 14 }}>
           <div className="lock-blur">
             <div className="eyebrow" style={{ marginBottom: 8 }}>{TEASER.riskTitle} 1</div>
-            <p className="quiz-text">{firstRisk}년 ○○월부터 ○○의 축이 흔들립니다. 특히 ○○○과의 관계에서 ○○○○를 조심해야 하며, 이 시기의 결정은 ○○○○...</p>
+            <p className="quiz-text">{firstRisk}년 ○○월, ○○살이 발동합니다. 특히 ○○○과의 관계에서 ○○○○를 조심해야 하며, 이 시기의 결정은 ○○○○...</p>
           </div>
           <div className="lock-overlay">
             <span className="lock-ico">🔒</span>
@@ -399,7 +450,7 @@ function Teaser({ saju, answers, quiz, onRestart, onReport }) {
         <div className="card locked" style={{ marginBottom: 14 }}>
           <div className="lock-blur">
             <div className="eyebrow" style={{ marginBottom: 8 }}>{TEASER.oppTitle} 1</div>
-            <p className="quiz-text">{firstOpp}년, 당신의 ○○운이 크게 열립니다. 이 해에 ○○○을 준비한 사람과 아닌 사람의 격차는 ○○○○...</p>
+            <p className="quiz-text">{firstOpp}년, 살이 잠들고 ○○의 문이 열립니다. 이 해에 ○○○을 준비한 사람과 아닌 사람의 격차는 ○○○○...</p>
           </div>
           <div className="lock-overlay">
             <span className="lock-ico">🔒</span>
@@ -411,7 +462,7 @@ function Teaser({ saju, answers, quiz, onRestart, onReport }) {
       {t.nextDaeun && (
         <div className="card locked" style={{ marginBottom: 26 }}>
           <div className="lock-blur">
-            <p className="quiz-text">{t.nextDaeun.startYear}년, 10년짜리 새 대운이 시작됩니다. 이 대운의 이름은 ○○이며, 당신의 인생 2막은...</p>
+            <p className="quiz-text">{t.nextDaeun.startYear}년, 10년짜리 판이 통째로 바뀝니다. 새 대운의 이름은 ○○이며, 당신의 인생 2막은...</p>
           </div>
           <div className="lock-overlay">
             <span className="lock-ico">🔒</span>
@@ -424,12 +475,12 @@ function Teaser({ saju, answers, quiz, onRestart, onReport }) {
       <div style={{ textAlign: "center" }}>
         <p style={{ fontSize: 15, marginBottom: 16 }}>
           지금은 베타 기간입니다.<br />
-          <b>잠긴 풀이 전체를 무료로 열어드립니다 — 대신 끝까지 읽고 판단해주세요.</b>
+          <b style={{ color: "var(--talisman)" }}>잠긴 살풀이 전체를 무료로 열어드립니다 — 대신 끝까지 읽고 판단해주세요.</b>
         </p>
         <button className="btn btn-seal" onClick={() => { ev("cta_report", { hits }); onReport(); }}>
-          정식 풀이 전체 열람 — 베타 무료
+          정식 살풀이 전체 개봉 — 베타 무료
         </button>
-        <p style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: "10px 0 20px" }}>6개 섹션 · 생성에 30초 정도 걸립니다</p>
+        <p style={{ fontSize: 12.5, color: "var(--ash-dim)", margin: "10px 0 20px" }}>6개 섹션 · 생성에 30초 정도 걸립니다</p>
         <a
           className="btn btn-ghost"
           href={CONFIG.CTA_URL}
@@ -498,12 +549,12 @@ function Report({ saju, onRestart }) {
 
   return (
     <section className="fade-up" style={{ padding: "6px 0 40px" }}>
-      <div className="eyebrow" style={{ textAlign: "center" }}>정식 풀이 · 베타</div>
-      <h2 className="display" style={{ fontSize: 25, textAlign: "center", margin: "10px 0 6px" }}>
+      <div className="eyebrow" style={{ textAlign: "center" }}>정식 살풀이 · 베타</div>
+      <h2 className="display candle" style={{ fontSize: 25, textAlign: "center", margin: "10px 0 6px" }}>
         {ch.ganzi} — “{ch.name}”
       </h2>
-      <p className="mono" style={{ textAlign: "center", fontSize: 12, color: "var(--ink-soft)", marginBottom: 24 }}>
-        {allDone ? `${SECTIONS.length}개 섹션 풀이 완료` : `풀이 생성 중… ${doneCount} / ${SECTIONS.length}`}
+      <p className="mono" style={{ textAlign: "center", fontSize: 12, color: "var(--ash-dim)", marginBottom: 24 }}>
+        {allDone ? `${SECTIONS.length}개 항목 개봉 완료` : `살을 읽는 중… ${doneCount} / ${SECTIONS.length}`}
       </p>
 
       {SECTIONS.map((s) => {
@@ -511,18 +562,18 @@ function Report({ saju, onRestart }) {
         return (
           <div className="card" key={s.id} style={{ marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 12 }}>
-              <span className="display" style={{ fontSize: 26, color: "var(--seal)" }}>{s.hanja}</span>
+              <span className="display" style={{ fontSize: 26, color: "var(--blood-bright)" }}>{s.hanja}</span>
               <h3 className="display" style={{ fontSize: 18 }}>{s.title}</h3>
             </div>
             {r.text && renderText(r.text)}
             {r.loading && (
-              <p className="mono" style={{ fontSize: 13, color: "var(--ink-soft)" }}>
-                <span className="ink-dot" /> 명식을 읽는 중입니다…
+              <p className="mono" style={{ fontSize: 13, color: "var(--ash-dim)" }}>
+                <span className="ink-dot" /> 촛불 아래에서 명식을 읽는 중입니다…
               </p>
             )}
             {r.error && (
               <div>
-                <p style={{ fontSize: 14, color: "var(--seal)", marginBottom: 10 }}>{r.error}</p>
+                <p style={{ fontSize: 14, color: "var(--blood-bright)", marginBottom: 10 }}>{r.error}</p>
                 <button className="btn btn-ghost" style={{ padding: "10px" }} onClick={() => fetchSection(s.id)}>다시 시도</button>
               </div>
             )}
@@ -534,7 +585,7 @@ function Report({ saju, onRestart }) {
         <div className="fade-up" style={{ textAlign: "center", marginTop: 28 }}>
           <hr className="divider" />
           <p style={{ fontSize: 15, marginBottom: 16 }}>
-            여기까지가 베타 풀이의 전부입니다.<br />
+            여기까지가 베타 살풀이의 전부입니다.<br />
             <b>읽어보니 어떠셨나요? 정식 출시 소식을 가장 먼저 받아보세요.</b>
           </p>
           <a
@@ -546,7 +597,7 @@ function Report({ saju, onRestart }) {
           >
             {CONFIG.CTA_LABEL}
           </a>
-          <p style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: "10px 0 20px" }}>{CONFIG.CTA_SUB}</p>
+          <p style={{ fontSize: 12.5, color: "var(--ash-dim)", margin: "10px 0 20px" }}>{CONFIG.CTA_SUB}</p>
           <button className="btn btn-ghost" onClick={onRestart}>다른 사람 사주 계산해보기</button>
         </div>
       )}

@@ -2,8 +2,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { computeSaju, GAN, GAN_HANJA, JI, JI_HANJA, GAN_ELEM, JI_ELEM, ELEM_NAME, ELEM_HANJA, REGIONS, JI_MAIN_GAN } from "../lib/engine";
 import { iljuCharacter, bluntLine, buildQuiz, buildTeaser, salList } from "../lib/insights";
-import { SECTIONS, buildFacts } from "../lib/report";
-import { CONFIG, TEASER } from "../lib/content";
+import { CONFIG, LOCKED_ITEMS } from "../lib/content";
 import { track } from "@vercel/analytics";
 
 const ELEM_COLOR = ["var(--elem-wood)", "var(--elem-fire)", "var(--elem-earth)", "var(--elem-metal)", "var(--elem-water)"];
@@ -14,8 +13,10 @@ function ev(name, data) {
 
 // ---------------- 메인 ----------------
 export default function Home() {
-  const [step, setStep] = useState("intro"); // intro → input → reveal → quiz → teaser
+  const [step, setStep] = useState("intro"); // intro → input → reveal → quiz → paywall
   const [saju, setSaju] = useState(null);
+  const [leadId, setLeadId] = useState(null);
+  const [leadName, setLeadName] = useState("");
   const [quiz, setQuiz] = useState([]);
   const [answers, setAnswers] = useState({});
   const topRef = useRef(null);
@@ -26,8 +27,10 @@ export default function Home() {
     setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 30);
   };
 
-  const onComputed = (result) => {
+  const onComputed = (result, id, nm) => {
     setSaju(result);
+    setLeadId(id);
+    setLeadName(nm || "");
     setQuiz(buildQuiz(result));
     setAnswers({});
     goto("reveal");
@@ -44,10 +47,9 @@ export default function Home() {
           {step === "input" && <InputForm onComputed={onComputed} />}
           {step === "reveal" && saju && <Reveal saju={saju} onNext={() => goto("quiz")} />}
           {step === "quiz" && saju && (
-            <Quiz saju={saju} quiz={quiz} answers={answers} setAnswers={setAnswers} onNext={() => goto("teaser")} />
+            <Quiz saju={saju} quiz={quiz} answers={answers} setAnswers={setAnswers} leadId={leadId} onNext={() => goto("paywall")} />
           )}
-          {step === "teaser" && saju && <Teaser saju={saju} answers={answers} quiz={quiz} onRestart={() => goto("input")} onReport={() => goto("report")} />}
-          {step === "report" && saju && <Report saju={saju} onRestart={() => goto("input")} />}
+          {step === "paywall" && saju && <Paywall saju={saju} answers={answers} quiz={quiz} leadName={leadName} />}
           <Footer />
         </div>
       )}
@@ -56,7 +58,7 @@ export default function Home() {
 }
 
 function Steps({ step }) {
-  const map = { intro: 0, input: 0, reveal: 1, quiz: 2, teaser: 3, report: 3 };
+  const map = { intro: 0, input: 0, reveal: 1, quiz: 2, paywall: 3 };
   const idx = map[step] ?? 0;
   const labels = ["計 계산", "命 명식", "驗 검증", "開 개봉"];
   return (
@@ -119,9 +121,12 @@ function Intro({ onStart }) {
   );
 }
 
-// ---------------- 1. 입력 ----------------
+// ---------------- 1. 입력 (디비) ----------------
 function InputForm({ onComputed }) {
   const now = new Date();
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [consent, setConsent] = useState(false);
   const [cal, setCal] = useState("solar"); // solar | lunar
   const [leap, setLeap] = useState(false);
   const [y, setY] = useState(1995);
@@ -133,12 +138,18 @@ function InputForm({ onComputed }) {
   const [gender, setGender] = useState("F");
   const [region, setRegion] = useState("서울");
   const [err, setErr] = useState("");
+  const [sending, setSending] = useState(false);
 
   const years = [];
   for (let i = now.getFullYear(); i >= 1920; i--) years.push(i);
 
   const submit = async () => {
     setErr("");
+    if (!name.trim()) { setErr("이름을 입력해주세요."); return; }
+    const cleanPhone = phone.replace(/[^0-9]/g, "");
+    if (cleanPhone.length < 10) { setErr("휴대폰 번호를 정확히 입력해주세요."); return; }
+    if (!consent) { setErr("개인정보 수집·이용에 동의해주세요."); return; }
+
     let sy = y, sm = m, sd = d;
     if (cal === "lunar") {
       try {
@@ -156,6 +167,8 @@ function InputForm({ onComputed }) {
     }
     const daysIn = new Date(sy, sm, 0).getDate();
     if (sd > daysIn) { setErr("존재하지 않는 날짜입니다."); return; }
+
+    setSending(true);
     const lon = REGIONS.find((r) => r.name === region)?.lon ?? null;
     const result = computeSaju({
       y: sy, m: sm, d: sd,
@@ -163,8 +176,27 @@ function InputForm({ onComputed }) {
       minute: unknownTime ? 0 : minute,
       gender, lon,
     });
-    ev("input_submitted", { cal, unknownTime });
-    onComputed(result);
+    // 디비 저장 (실패해도 퍼널은 계속 진행)
+    let leadId = null;
+    try {
+      const sals = salList(result).filter((s) => !s.good).map((s) => s.name);
+      const res = await fetch("/api/lead", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          phone: cleanPhone,
+          birth: { y: sy, m: sm, d: sd, hour: unknownTime ? null : hour, minute: unknownTime ? 0 : minute, gender, region, cal, leap },
+          salNames: sals,
+          salCount: sals.length,
+        }),
+      });
+      const data = await res.json();
+      leadId = data.id;
+    } catch (e) {}
+    setSending(false);
+    ev("lead_submitted", { cal, unknownTime, saved: !!leadId });
+    onComputed(result, leadId, name.trim());
   };
 
   const selStyle = {};
@@ -174,6 +206,15 @@ function InputForm({ onComputed }) {
       <p style={{ fontSize: 14, color: "var(--ash-dim)", marginBottom: 22 }}>
         입력하는 순간, 표준 만세력 기준으로 원국을 계산하고 살을 검출합니다.
       </p>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: 10, marginBottom: 16 }}>
+        <div className="field"><label>이름</label>
+          <input type="text" value={name} placeholder="홍길동" onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div className="field"><label>휴대폰 번호 (리포트 전달용)</label>
+          <input type="tel" value={phone} placeholder="010-0000-0000" onChange={(e) => setPhone(e.target.value)} />
+        </div>
+      </div>
 
       <div className="toggle-row" style={{ marginBottom: 16 }}>
         <button className={cal === "solar" ? "on" : ""} onClick={() => setCal("solar")}>양력</button>
@@ -235,8 +276,16 @@ function InputForm({ onComputed }) {
         </div>
       </div>
 
+      <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13, marginBottom: 16, color: "var(--ash-dim)", lineHeight: 1.6 }}>
+        <input type="checkbox" style={{ width: "auto", marginTop: 3 }} checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+        <span>
+          <a href="/privacy" target="_blank" style={{ color: "var(--talisman)" }}>개인정보 수집·이용</a>에 동의합니다.
+          (이름·연락처·생년월일시 / 풀이 산출 및 리포트 전달 목적 / 1년 보관)
+        </span>
+      </label>
+
       {err && <p style={{ color: "var(--blood-bright)", fontSize: 14, marginBottom: 12 }}>{err}</p>}
-      <button className="btn btn-seal" onClick={submit}>흉살 검사 실행</button>
+      <button className="btn btn-seal" onClick={submit} disabled={sending}>{sending ? "검출 중…" : "흉살 검사 실행"}</button>
       <p style={{ fontSize: 12, color: "var(--ash-dim)", marginTop: 12, textAlign: "center" }}>
         입력한 정보는 계산에만 사용되며 서버에 저장되지 않습니다.
       </p>
@@ -322,7 +371,7 @@ function Reveal({ saju, onNext }) {
         </div>
       )}
 
-      {/* 살 검출 목록 */}
+      {/* 살 검출 목록 — 첫 번째만 공개, 나머지 봉인 */}
       <div className="card" style={{ marginBottom: 18 }}>
         <div className="eyebrow" style={{ marginBottom: 14 }}>검출된 살 — {sals.length}건</div>
         {sals.length === 0 && (
@@ -330,14 +379,35 @@ function Reveal({ saju, onNext }) {
             원국에서 뚜렷한 살이 검출되지 않았습니다. 드문 경우입니다 — 다만 살이 없다는 것과 흐름이 없다는 것은 다릅니다. 아래 검증으로 확인하세요.
           </p>
         )}
-        {sals.map((s) => (
-          <div className={"sal-item" + (s.good ? " sal-good" : "")} key={s.name}>
-            <span className="sal-name">{s.name}</span>
-            <span className="sal-hanja">{s.hanja}</span>
-            <p className="sal-short">— {s.short}</p>
-            <p className="sal-desc">{s.desc}</p>
-          </div>
+        {sals.map((s, idx) => (
+          idx === 0 ? (
+            <div className={"sal-item" + (s.good ? " sal-good" : "")} key={s.name}>
+              <span className="sal-name">{s.name}</span>
+              <span className="sal-hanja">{s.hanja}</span>
+              <p className="sal-short">— {s.short}</p>
+              <p className="sal-desc">{s.desc}</p>
+            </div>
+          ) : (
+            <div className={"sal-item locked" + (s.good ? " sal-good" : "")} key={s.name}>
+              <div className="lock-blur">
+                <span className="sal-name">{s.name}</span>
+                <span className="sal-hanja">{s.hanja}</span>
+                <p className="sal-short">— {s.short}</p>
+                <p className="sal-desc">{s.desc}</p>
+              </div>
+              <div className="lock-overlay">
+                <span className="lock-ico">🔒</span>
+                <span className="display" style={{ fontSize: 17, color: "var(--ash)" }}>{s.name}{s.good ? "" : "살"} 봉인됨</span>
+                <span className="lock-txt">정식 살풀이에서 개봉됩니다</span>
+              </div>
+            </div>
+          )
         ))}
+        {sals.length > 1 && (
+          <p style={{ fontSize: 13, color: "var(--ash-dim)", marginTop: 8 }}>
+            무료 검사에서는 첫 번째 살만 풀이됩니다. 나머지 {sals.length - 1}건은 봉인 상태입니다.
+          </p>
+        )}
       </div>
 
       {/* 오행 분포 */}
@@ -385,7 +455,7 @@ function Reveal({ saju, onNext }) {
 }
 
 // ---------------- 3. 과거 검증 ----------------
-function Quiz({ saju, quiz, answers, setAnswers, onNext }) {
+function Quiz({ saju, quiz, answers, setAnswers, onNext, leadId }) {
   const answered = Object.keys(answers).length;
   const done = answered >= quiz.length && quiz.length > 0;
   const hits = quiz.filter((q, i) => answers[i] === true).length;
@@ -428,7 +498,11 @@ function Quiz({ saju, quiz, answers, setAnswers, onNext }) {
             {hits === 3 && "절반 이상이 발동 확인됐습니다. 이 명식은 당신의 흐름을 읽고 있습니다."}
             {hits <= 2 && "발동 일치율이 낮게 나왔습니다. 출생 시간이 부정확하거나 절입일 경계 출생일 가능성이 있습니다 — 정식 살풀이에서는 시간 보정 진단을 함께 제공합니다."}
           </p>
-          <button className="btn btn-seal" onClick={() => { ev("cta_teaser", { hits }); onNext(); }}>
+          <button className="btn btn-seal" onClick={() => {
+            ev("cta_paywall", { hits });
+            if (leadId) { try { fetch("/api/lead", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: leadId, quizHits: hits }) }); } catch (e) {} }
+            onNext();
+          }}>
             그럼 — 다음 발동은 언제입니까 →
           </button>
         </div>
@@ -437,195 +511,92 @@ function Quiz({ saju, quiz, answers, setAnswers, onNext }) {
   );
 }
 
-// ---------------- 4. 미래 티저 (잠금) ----------------
-function Teaser({ saju, answers, quiz, onRestart, onReport }) {
+// ---------------- 4. 결제 유도 (페이월) ----------------
+function Paywall({ saju, answers, quiz, leadName }) {
   const t = useMemo(() => buildTeaser(saju), [saju]);
+  const sals = useMemo(() => salList(saju).filter((s) => !s.good), [saju]);
   const hits = quiz.filter((q, i) => answers[i] === true).length;
   const firstRisk = t.risks[0]?.year;
-  const firstOpp = t.opps[0]?.year;
+  const price = CONFIG.PRICE.toLocaleString("ko-KR");
+  const priceOrig = CONFIG.PRICE_ORIGINAL.toLocaleString("ko-KR");
+
+  useEffect(() => { ev("paywall_view", { hits }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <section className="fade-up" style={{ padding: "6px 0 40px" }}>
       <div className="eyebrow" style={{ textAlign: "center" }}>개봉 전</div>
-      <h2 className="display candle" style={{ fontSize: 25, textAlign: "center", margin: "10px 0 8px" }}>
-        향후 5년,<br />
-        <span style={{ color: "var(--blood-bright)" }}>발동 경보 {t.risks.length}건</span>과{" "}
-        <span style={{ color: "var(--talisman)" }}>열리는 문 {t.opps.length}개</span>가<br />계산되었습니다
+      <h2 className="display candle" style={{ fontSize: 24, textAlign: "center", margin: "10px 0 8px" }}>
+        {leadName ? `${leadName} 님, ` : ""}여기서부터는<br />
+        <span style={{ color: "var(--blood-bright)" }}>봉인</span>되어 있습니다
       </h2>
-      <p style={{ textAlign: "center", fontSize: 14, color: "var(--ash-dim)", marginBottom: 24 }}>
+      <p style={{ textAlign: "center", fontSize: 14, color: "var(--ash-dim)", marginBottom: 8 }}>
         {hits >= 3
-          ? `과거 ${hits}건의 발동을 맞힌 그 계산이, 앞으로의 시간에도 똑같이 적용됩니다.`
-          : "과거를 계산한 것과 같은 방식으로, 미래의 발동이 계산됩니다."}
+          ? `방금 과거 ${hits}건의 발동을 직접 확인하셨습니다. 같은 계산이 아래 봉인에 그대로 들어 있습니다.`
+          : "지금까지 보신 것은 전체 살풀이의 20%입니다."}
       </p>
-
       {firstRisk && (
-        <div className="card locked" style={{ marginBottom: 14 }}>
-          <div className="lock-blur">
-            <div className="eyebrow" style={{ marginBottom: 8 }}>{TEASER.riskTitle} 1</div>
-            <p className="quiz-text">{firstRisk}년 ○○월, ○○살이 발동합니다. 특히 ○○○과의 관계에서 ○○○○를 조심해야 하며, 이 시기의 결정은 ○○○○...</p>
-          </div>
-          <div className="lock-overlay">
-            <span className="lock-ico">🔒</span>
-            <span className="display" style={{ fontSize: 20 }}>{firstRisk}년 — {t.risks[0].kind}</span>
-            <span className="lock-txt">{TEASER.lockNote}</span>
-          </div>
-        </div>
-      )}
-      {firstOpp && (
-        <div className="card locked" style={{ marginBottom: 14 }}>
-          <div className="lock-blur">
-            <div className="eyebrow" style={{ marginBottom: 8 }}>{TEASER.oppTitle} 1</div>
-            <p className="quiz-text">{firstOpp}년, 살이 잠들고 ○○의 문이 열립니다. 이 해에 ○○○을 준비한 사람과 아닌 사람의 격차는 ○○○○...</p>
-          </div>
-          <div className="lock-overlay">
-            <span className="lock-ico">🔒</span>
-            <span className="display" style={{ fontSize: 20 }}>{firstOpp}년 — {t.opps[0].kind}</span>
-            <span className="lock-txt">{TEASER.lockNote}</span>
-          </div>
-        </div>
-      )}
-      {t.nextDaeun && (
-        <div className="card locked" style={{ marginBottom: 26 }}>
-          <div className="lock-blur">
-            <p className="quiz-text">{t.nextDaeun.startYear}년, 10년짜리 판이 통째로 바뀝니다. 새 대운의 이름은 ○○이며, 당신의 인생 2막은...</p>
-          </div>
-          <div className="lock-overlay">
-            <span className="lock-ico">🔒</span>
-            <span className="display" style={{ fontSize: 20 }}>{t.nextDaeun.startYear}년 — 새 대운의 시작</span>
-            <span className="lock-txt">{TEASER.lockNote}</span>
-          </div>
-        </div>
+        <p className="display" style={{ textAlign: "center", fontSize: 17, color: "var(--talisman)", marginBottom: 22 }}>
+          가장 가까운 발동 경보: <span style={{ color: "var(--blood-bright)" }}>{firstRisk}년</span>
+        </p>
       )}
 
-      <div style={{ textAlign: "center" }}>
-        <p style={{ fontSize: 15, marginBottom: 16 }}>
-          지금은 베타 기간입니다.<br />
-          <b style={{ color: "var(--talisman)" }}>잠긴 살풀이 전체를 무료로 열어드립니다 — 대신 끝까지 읽고 판단해주세요.</b>
+      {/* 잠긴 항목 목록 */}
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="eyebrow" style={{ marginBottom: 14 }}>봉인된 항목 — {LOCKED_ITEMS.length}편</div>
+        {LOCKED_ITEMS.map((it) => (
+          <div key={it.label} style={{ display: "flex", gap: 14, alignItems: "flex-start", padding: "12px 0", borderBottom: "1px solid #241f18" }}>
+            <span className="display" style={{ fontSize: 22, color: "var(--blood-bright)", width: 26, textAlign: "center" }}>{it.hanja}</span>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 15.5, color: "var(--ash)" }}><b>{it.label}</b></p>
+              <p style={{ fontSize: 13, color: "var(--ash-dim)" }}>{it.desc}</p>
+            </div>
+            <span style={{ fontSize: 16 }}>🔒</span>
+          </div>
+        ))}
+        {sals.length > 1 && (
+          <p style={{ fontSize: 13.5, color: "var(--ash-dim)", marginTop: 12 }}>
+            특히 아직 열리지 않은 살: <b style={{ color: "var(--blood-bright)" }}>{sals.slice(1).map((s) => s.name + "살").join(", ")}</b>
+          </p>
+        )}
+      </div>
+
+      {/* 가격 */}
+      <div className="card" style={{ textAlign: "center", border: "2px solid var(--blood)", marginBottom: 20 }}>
+        <div className="eyebrow" style={{ marginBottom: 10 }}>정식 살풀이 전체 개봉</div>
+        <p style={{ fontSize: 15, color: "var(--ash-dim)" }}>
+          <span style={{ textDecoration: "line-through" }}>{priceOrig}원</span>
+          <span className="mono" style={{ marginLeft: 8, fontSize: 12, color: "var(--blood-bright)" }}>오픈 특가</span>
         </p>
-        <button className="btn btn-seal" onClick={() => { ev("cta_report", { hits }); onReport(); }}>
-          정식 살풀이 전체 개봉 — 베타 무료
-        </button>
-        <p style={{ fontSize: 12.5, color: "var(--ash-dim)", margin: "10px 0 20px" }}>6개 섹션 · 생성에 30초 정도 걸립니다</p>
+        <p className="display candle" style={{ fontSize: 38, margin: "2px 0 14px" }}>{price}원</p>
         <a
-          className="btn btn-ghost"
-          href={CONFIG.CTA_URL}
+          className="btn btn-seal"
+          href={CONFIG.PAYMENT_URL}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={() => ev("cta_signup", { hits })}
-          style={{ marginBottom: 12 }}
+          onClick={() => ev("pay_click", { hits })}
         >
-          {CONFIG.CTA_LABEL}
+          결제하고 전체 개봉하기
         </a>
-        <button className="btn btn-ghost" onClick={onRestart}>다른 사람 사주 계산해보기</button>
+        <p style={{ fontSize: 13, color: "var(--ash-dim)", marginTop: 14, lineHeight: 1.9 }}>
+          <b style={{ color: "var(--ash)" }}>전달 방법</b><br />
+          ① 결제 &nbsp;→&nbsp; ② 카카오톡 채널 추가 후 <b>성함</b> 남기기 &nbsp;→&nbsp; ③ 24시간 내 전용 리포트 링크 도착
+        </p>
+        <a
+          className="btn btn-ghost"
+          style={{ marginTop: 12 }}
+          href={CONFIG.KAKAO_CHANNEL_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => ev("kakao_click")}
+        >
+          카카오톡 채널 추가하기
+        </a>
       </div>
-    </section>
-  );
-}
 
-// ---------------- 5. 정식 풀이 리포트 (베타) ----------------
-function Report({ saju, onRestart }) {
-  const facts = useMemo(() => buildFacts(saju), [saju]);
-  const [results, setResults] = useState({}); // id → { text } | { error }
-  const startedRef = useRef(false);
-
-  const fetchSection = async (id) => {
-    setResults((r) => ({ ...r, [id]: { loading: true } }));
-    try {
-      const res = await fetch("/api/section", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sectionId: id, facts }),
-      });
-      const data = await res.json();
-      if (!res.ok || data.error) throw new Error(data.error || "생성 실패");
-      setResults((r) => ({ ...r, [id]: { text: data.text } }));
-      ev("report_section_done", { id });
-    } catch (e) {
-      setResults((r) => ({ ...r, [id]: { error: e.message } }));
-      ev("report_section_error", { id });
-    }
-  };
-
-  useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
-    ev("report_start");
-    SECTIONS.forEach((s) => fetchSection(s.id));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const doneCount = SECTIONS.filter((s) => results[s.id]?.text).length;
-  const allDone = doneCount === SECTIONS.length;
-  useEffect(() => {
-    if (allDone) ev("report_complete");
-  }, [allDone]);
-
-  const ch = useMemo(() => iljuCharacter(saju), [saju]);
-
-  // **굵게** 만 허용된 텍스트 렌더링
-  const renderText = (text) =>
-    text.split(/\n{2,}/).map((para, i) => (
-      <p key={i} style={{ fontSize: 15.5, marginBottom: 14 }}>
-        {para.split(/(\*\*[^*]+\*\*)/g).map((seg, j) =>
-          seg.startsWith("**") && seg.endsWith("**") ? <b key={j}>{seg.slice(2, -2)}</b> : <span key={j}>{seg}</span>
-        )}
+      <p style={{ textAlign: "center", fontSize: 12.5, color: "var(--ash-dim)", lineHeight: 1.9 }}>
+        리포트는 사람이 검수 후 발송합니다.<br />
+        수신 후 24시간 내 요청 시 전액 환불해 드립니다.
       </p>
-    ));
-
-  return (
-    <section className="fade-up" style={{ padding: "6px 0 40px" }}>
-      <div className="eyebrow" style={{ textAlign: "center" }}>정식 살풀이 · 베타</div>
-      <h2 className="display candle" style={{ fontSize: 25, textAlign: "center", margin: "10px 0 6px" }}>
-        {ch.ganzi} — “{ch.name}”
-      </h2>
-      <p className="mono" style={{ textAlign: "center", fontSize: 12, color: "var(--ash-dim)", marginBottom: 24 }}>
-        {allDone ? `${SECTIONS.length}개 항목 개봉 완료` : `살을 읽는 중… ${doneCount} / ${SECTIONS.length}`}
-      </p>
-
-      {SECTIONS.map((s) => {
-        const r = results[s.id] || {};
-        return (
-          <div className="card" key={s.id} style={{ marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 12 }}>
-              <span className="display" style={{ fontSize: 26, color: "var(--blood-bright)" }}>{s.hanja}</span>
-              <h3 className="display" style={{ fontSize: 18 }}>{s.title}</h3>
-            </div>
-            {r.text && renderText(r.text)}
-            {r.loading && (
-              <p className="mono" style={{ fontSize: 13, color: "var(--ash-dim)" }}>
-                <span className="ink-dot" /> 촛불 아래에서 명식을 읽는 중입니다…
-              </p>
-            )}
-            {r.error && (
-              <div>
-                <p style={{ fontSize: 14, color: "var(--blood-bright)", marginBottom: 10 }}>{r.error}</p>
-                <button className="btn btn-ghost" style={{ padding: "10px" }} onClick={() => fetchSection(s.id)}>다시 시도</button>
-              </div>
-            )}
-          </div>
-        );
-      })}
-
-      {allDone && (
-        <div className="fade-up" style={{ textAlign: "center", marginTop: 28 }}>
-          <hr className="divider" />
-          <p style={{ fontSize: 15, marginBottom: 16 }}>
-            여기까지가 베타 살풀이의 전부입니다.<br />
-            <b>읽어보니 어떠셨나요? 정식 출시 소식을 가장 먼저 받아보세요.</b>
-          </p>
-          <a
-            className="btn btn-seal"
-            href={CONFIG.CTA_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => ev("cta_signup_after_report")}
-          >
-            {CONFIG.CTA_LABEL}
-          </a>
-          <p style={{ fontSize: 12.5, color: "var(--ash-dim)", margin: "10px 0 20px" }}>{CONFIG.CTA_SUB}</p>
-          <button className="btn btn-ghost" onClick={onRestart}>다른 사람 사주 계산해보기</button>
-        </div>
-      )}
     </section>
   );
 }

@@ -92,34 +92,43 @@ export default function Home() {
   );
 }
 
-// ---------------- 0. 영상 씬 ----------------
+// ---------------- 0. 히어로 (이미지 기반) ----------------
 function Intro({ onStart }) {
-  const [videoOk, setVideoOk] = useState(true);
+  const [imgOk, setImgOk] = useState(true);
   return (
     <section className="intro-full">
-      {videoOk && (
-        <video className="intro-video" autoPlay muted loop playsInline poster="/intro.jpg" onError={() => setVideoOk(false)}>
-          <source src="/intro.mp4" type="video/mp4" />
-        </video>
+      {imgOk && (
+        <img
+          className="hero-img"
+          src="/hero.jpg"
+          alt=""
+          onError={() => setImgOk(false)}
+        />
       )}
-      {!videoOk && <div className="intro-fallback" aria-hidden="true" />}
-      <div className="intro-vignette" aria-hidden="true" />
+      {!imgOk && <div className="hero-fallback" aria-hidden="true" />}
+      <div className="hero-tone" aria-hidden="true" />
 
-      <div className="intro-content">
-        <div className="eyebrow">{CONFIG.BRAND_HANJA} · {CONFIG.CLAIM}</div>
-        <h1 className="intro-hook">
-          {CONFIG.HOOK.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}
-        </h1>
-        <p className="intro-sub">{CONFIG.TAGLINE}</p>
+      <div className="hero-top">
+        <span className="hero-logo">{CONFIG.BRAND}</span>
+        <span className="line" aria-hidden="true" />
+        <span className="eyebrow">{CONFIG.BRAND_HANJA}</span>
       </div>
 
-      <div className="intro-cta-bar">
-        <button className="intro-cta" onClick={() => { ev("cta_start"); onStart(); }}>
-          <span className="cta-seal" aria-hidden="true">書</span>
-          <span className="cta-label">우리 아이 재능 확인하기</span>
-          <span className="cta-seal" aria-hidden="true">堂</span>
+      <div className="hero-rail" aria-hidden="true">子女命鑑</div>
+
+      <div className="hero-body">
+        <span className="eyebrow">{CONFIG.CLAIM}</span>
+        <h1 className="hero-hook">
+          학원비 쓰기 전에<br /><em>이것부터</em> 보세요
+        </h1>
+        <p className="hero-sub">{CONFIG.TAGLINE} — 타고난 재능 등급, 3분이면 나옵니다.</p>
+        <button className="hero-cta" onClick={() => { ev("cta_start"); onStart(); }}>
+          <span className="hc-label">
+            우리 아이 재능 무료 진단
+            <span className="hc-sub">무료 · 회원가입 없음 · 3분</span>
+          </span>
+          <span className="hc-seal" aria-hidden="true">鑑</span>
         </button>
-        <p className="intro-cta-note">무료 진단 · 3분 · 생년월일시만 있으면 됩니다</p>
       </div>
     </section>
   );
@@ -138,13 +147,17 @@ function TeacherFlow({ step, form, setForm, goto, onSubmit }) {
   if (form.gender && idx > INPUT_STEPS.indexOf("gender")) rows.push({ k: "성별", v: form.gender === "M" ? "아들" : "딸", s: "gender" });
 
   const T = TEACHER[step];
+  const NUM = { gender: "問 一", birth: "問 二", time: "問 三", phone: "問 四", name: "問 五" };
+  const MARK = { gender: "性", birth: "生", time: "時", phone: "絡", name: "名" };
 
   return (
     <section className="seodang-stage">
-      <div className="sd-head">
+      <div className="step-mark" aria-hidden="true">{MARK[step]}</div>
+      <div className="sd-head" key={step}>
         {step === "gender" && <p className="sd-say">{TEACHER.intro.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</p>}
         {step !== "gender" && (
           <>
+            <span className="sd-num">{NUM[step]}</span>
             <h2 className="sd-q">{T.q}</h2>
             {T.sub && <p className="sd-sub">{T.sub}</p>}
           </>
@@ -168,12 +181,6 @@ function TeacherFlow({ step, form, setForm, goto, onSubmit }) {
           ))}
         </div>
       )}
-
-      {/* 훈장님 — 수묵 일원상 (public/teacher.png 넣으면 이미지로 대체) */}
-      <div className="teacher-wrap" aria-hidden="true">
-        <img src="/teacher.png" alt="" className="teacher-img" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-        <div className="ink-circle"><span className="ink-glyph">命</span></div>
-      </div>
 
       {step === "gender" && (
         <div className="gender-sheet">
@@ -295,10 +302,9 @@ function NameInput({ form, setForm, onDone }) {
 function Checking() {
   return (
     <section className="seodang-stage" style={{ justifyContent: "center", alignItems: "center" }}>
-      <p className="sd-say" style={{ fontSize: 24 }}>{TEACHER.checking.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</p>
-      <div className="teacher-wrap" style={{ position: "relative", left: "auto", top: "auto", transform: "none", marginTop: 30 }} aria-hidden="true">
-        <div className="ink-circle spinning"><span className="ink-glyph">命</span></div>
-      </div>
+      <div className="step-mark" style={{ right: "auto", left: "50%", transform: "translateX(-50%)", bottom: "12%" }} aria-hidden="true">命</div>
+      <p className="sd-say">{TEACHER.checking.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</p>
+      <p className="mono" style={{ fontSize: 11, letterSpacing: "0.3em", color: "var(--geumbak)", marginTop: 18 }}>四柱 計算 中</p>
     </section>
   );
 }
@@ -322,6 +328,7 @@ function Diagnosis({ saju, name, onPay }) {
 
       {/* 등급 카드 — 무료 */}
       <div className="grade-card">
+        <span className="nakgwan" aria-hidden="true">命<br/>鑑</span>
         <div className="eyebrow" style={{ marginBottom: 10 }}>{name ? `${name} — ` : ""}타고난 재능 등급</div>
         <div className="grade-hanja">{tp.grade.key}</div>
         <p className="grade-name">{tp.grade.name}</p>

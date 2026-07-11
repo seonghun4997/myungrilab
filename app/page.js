@@ -218,106 +218,181 @@ function Mountains() {
   );
 }
 
+// ---------------- 스크롤 등장 & 카운트업 ----------------
+function useReveal() {
+  useEffect(() => {
+    const els = document.querySelectorAll(".rv");
+    const io = new IntersectionObserver(
+      (ents) => ents.forEach((e) => e.isIntersecting && e.target.classList.add("in")),
+      { threshold: 0.18 }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+}
+
+function CountUp({ end, suffix, duration = 1400 }) {
+  const ref = useRef(null);
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let raf, started = false;
+    const io = new IntersectionObserver((ents) => {
+      if (ents[0].isIntersecting && !started) {
+        started = true;
+        const t0 = performance.now();
+        const tick = (t) => {
+          const p = Math.min(1, (t - t0) / duration);
+          setVal(Math.floor(end * (1 - Math.pow(1 - p, 3))));
+          if (p < 1) raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+        io.disconnect();
+      }
+    }, { threshold: 0.5 });
+    io.observe(el);
+    return () => { io.disconnect(); cancelAnimationFrame(raf); };
+  }, [end, duration]);
+  return <span ref={ref}>{val.toLocaleString("ko-KR")}{suffix}</span>;
+}
+
 // ---------------- 0. 롱폼 랜딩 ----------------
 function Landing({ onStart, onResume }) {
+  useReveal();
   return (
     <div className="land">
-      {/* 히어로 */}
-      <section className="hero" style={{ minHeight: "92svh" }}>
+      {/* ═══ 히어로 ═══ */}
+      <section className="hero" style={{ minHeight: "94svh" }}>
+        <div className="nebula" aria-hidden="true" />
         <div className="stars" /><div className="stars2" />
+        <div className="shooting" aria-hidden="true" />
         <div className="moon" aria-hidden="true" />
+
         <div className="hero-top">
           <span className="logo">{CONFIG.BRAND_HANJA}</span>
           <span className="line" aria-hidden="true" />
           <span className="eyebrow">{CONFIG.CLAIM}</span>
         </div>
-        <div className="hero-copy" style={{ marginTop: "17svh" }}>
+
+        {/* 석문 기둥 */}
+        <div className="pillars" aria-hidden="true">
+          <i /><i /><i /><i />
+        </div>
+
+        <div className="hero-copy" style={{ marginTop: "15svh" }}>
+          <span className="hero-chip">紫微斗數 · 황실의 별자리 운세법</span>
           <h1 className="hook">
             {LANDING.HOOK_TOP}<br />
-            <span className="fate">{LANDING.HOOK_YEAR}<span className="veil" aria-hidden="true">9</span>년</span>{LANDING.HOOK_BOTTOM.replace("년", "")}
+            <span className="year-glow">{LANDING.HOOK_YEAR}<span className="veil" aria-hidden="true">9</span>년</span>에<br />
+            시작됩니다.
           </h1>
+          <p className="hero-sub2">당신의 황금기는 이미 명반(命盤)에 적혀 있습니다.</p>
         </div>
+
         <Mountains />
         <div className="scroll-hint" aria-hidden="true">︾</div>
       </section>
 
-      {/* 도대체 왜 */}
-      <section className="lsec">
-        <p className="l-why1">{LANDING.WHY1}</p>
-        <p className="l-why2">{LANDING.WHY2}</p>
+      {/* ═══ 도대체 왜 ═══ */}
+      <section className="lsec" style={{ textAlign: "center" }}>
+        <p className="l-why0 rv">도대체</p>
+        <p className="l-why1 rv">왜?</p>
+        <p className="l-why2 rv">자미두수가<br />이렇게 유명할까요?</p>
       </section>
 
-      {/* 황실 권위 */}
+      {/* ═══ 황실 권위 ═══ */}
       <section className="lsec">
-        <span className="eyebrow">皇室秘傳</span>
-        <h2 className="l-title">{LANDING.ROYAL_T.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</h2>
-        <p className="l-desc">{LANDING.ROYAL_D}</p>
+        <div className="royal-card rv">
+          <span className="royal-rail" aria-hidden="true">皇室秘傳</span>
+          <span className="sec-kicker">壹 · 기원</span>
+          <h2 className="l-title">{LANDING.ROYAL_T.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</h2>
+          <p className="l-desc">{LANDING.ROYAL_D}</p>
+          <div className="royal-line" aria-hidden="true"><i>宋</i><em /><i>紫微斗數</i><em /><i>今</i></div>
+        </div>
       </section>
 
-      {/* 카테고리 공격 */}
-      <section className="lsec">
-        <h2 className="l-title l-attack">{LANDING.ATTACK_T.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</h2>
-        <p className="l-desc">{LANDING.ATTACK_D.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</p>
+      {/* ═══ 카테고리 공격 ═══ */}
+      <section className="lsec" style={{ textAlign: "center" }}>
+        <span className="sec-kicker rv">貳 · 질문</span>
+        <h2 className="l-attack2 rv">
+          아직도 <span className="strike-word">사주<i aria-hidden="true" /></span>만<br />보세요?
+        </h2>
+        <p className="l-desc rv" style={{ marginTop: 14 }}>
+          {LANDING.ATTACK_D.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}
+        </p>
       </section>
 
-      {/* 170배 비교 */}
+      {/* ═══ 170배 비교 ═══ */}
       <section className="lsec">
-        <h2 className="l-title">{LANDING.COMPARE_T.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</h2>
-        <p className="l-desc" style={{ marginBottom: 20 }}>{LANDING.COMPARE_D}</p>
-        <div className="stat-row">
+        <span className="sec-kicker rv">參 · 근거</span>
+        <h2 className="l-title rv">{LANDING.COMPARE_T.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</h2>
+        <p className="l-desc rv" style={{ marginBottom: 22 }}>{LANDING.COMPARE_D}</p>
+
+        <div className="vs-wrap rv">
           <div className="stat">
-            <span className="stat-name">{LANDING.COMPARE_A.name}</span>
-            <b className="stat-num">{LANDING.COMPARE_A.num}</b>
-            <span className="stat-sub">{LANDING.COMPARE_A.sub}</span>
+            <span className="stat-name">사주 8자</span>
+            <b className="stat-num"><CountUp end={51} suffix="만 개" /></b>
+            <span className="stat-sub">경우의 수</span>
+            <div className="bar"><i style={{ width: "4%" }} /></div>
           </div>
+          <span className="vs-seal" aria-hidden="true">VS</span>
           <div className="stat hot">
-            <span className="stat-name">{LANDING.COMPARE_B.name}</span>
-            <b className="stat-num">{LANDING.COMPARE_B.num}</b>
-            <span className="stat-sub">{LANDING.COMPARE_B.sub}</span>
+            <span className="stat-name">자미두수 12궁</span>
+            <b className="stat-num"><CountUp end={8700} suffix="만 개+" /></b>
+            <span className="stat-sub">경우의 수</span>
+            <div className="bar hot"><i style={{ width: "100%" }} /></div>
           </div>
         </div>
-        <div className="check-list">
-          {LANDING.CHECKS.map((t) => (
-            <p key={t}><span className="ck">✓</span>{t}</p>
+        <p className="x170 rv">× <b>170배</b> 촘촘한 해석</p>
+
+        <div className="check-list2">
+          {LANDING.CHECKS.map((t, i) => (
+            <div className="check-card rv" key={t}>
+              <span className="cc-hanja">{["盤", "宮", "限"][i]}</span>
+              <p>{t}</p>
+            </div>
           ))}
         </div>
       </section>
 
-      {/* 후기 or 신뢰 */}
+      {/* ═══ 후기 or 검증 ═══ */}
       <section className="lsec">
         {REVIEWS.enabled && REVIEWS.items.length > 0 ? (
           <>
-            <h2 className="l-title" style={{ fontSize: 24 }}>리뷰 <span style={{ color: "var(--gold)" }}>{REVIEWS.ratingLine}</span></h2>
-            <p className="l-desc" style={{ marginBottom: 16 }}>{CONFIG.BRAND} 이용자들의 실제 후기입니다.</p>
-            {REVIEWS.items.map((r, i) => (
-              <div className="review" key={i}>
-                <div className="rv-top"><b>{r.mask}</b><span>{r.ilju}</span><span className="rv-star">★5.0</span><span className="rv-date">{r.date}</span></div>
-                <p>{r.text}</p>
-              </div>
-            ))}
+            <span className="sec-kicker rv">肆 · 후기</span>
+            <h2 className="l-title rv" style={{ fontSize: 25 }}>리뷰 <span style={{ color: "var(--gold)" }}>{REVIEWS.ratingLine}</span></h2>
+            <div className="rv-scroll">
+              {REVIEWS.items.map((r, i) => (
+                <div className="review" key={i}>
+                  <div className="rv-top"><b>{r.mask}</b><span>{r.ilju}</span><span className="rv-star">★5.0</span><span className="rv-date">{r.date}</span></div>
+                  <p>{r.text}</p>
+                </div>
+              ))}
+            </div>
           </>
         ) : (
-          <>
-            <span className="eyebrow">檢證</span>
-            <h2 className="l-title" style={{ fontSize: 24 }}>별의 위치는<br />사람이 찍지 않습니다</h2>
-            <div className="check-list" style={{ marginTop: 16 }}>
+          <div className="verify-card rv">
+            <span className="sec-kicker">肆 · 검증</span>
+            <h2 className="l-title" style={{ fontSize: 25 }}>별의 위치는<br />사람이 찍지 않습니다</h2>
+            <div className="check-list" style={{ marginTop: 14 }}>
               {TRUST.map((t) => <p key={t}><span className="ck">✓</span>{t}</p>)}
               <p><span className="ck">✓</span>좋은 말만 하지 않습니다 — 걸리는 배치까지 전부 말씀드립니다</p>
             </div>
-          </>
+          </div>
         )}
       </section>
 
-      {/* 파이널 */}
-      <section className="lsec" style={{ textAlign: "center", paddingBottom: 180 }}>
-        <h2 className="l-title" style={{ display: "inline-block", textAlign: "center" }}>
+      {/* ═══ 파이널 ═══ */}
+      <section className="lsec final-sec" style={{ textAlign: "center", paddingBottom: 190 }}>
+        <div className="final-moon" aria-hidden="true" />
+        <h2 className="l-title rv" style={{ fontSize: 30, textAlign: "center" }}>
           {LANDING.FINAL_T.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}
         </h2>
-        {onResume && <button className="resume-chip" onClick={onResume}>지난 감정 다시 보기 →</button>}
+        {onResume && <button className="resume-chip rv" onClick={onResume}>지난 감정 다시 보기 →</button>}
         <SiteFooter />
       </section>
 
-      {/* 하단 고정 CTA (용용식) */}
       <div className="land-bar">
         {SOCIAL_PROOF.enabled && (
           <div className="social-pill">💜 <b>{SOCIAL_PROOF.buyers}명</b>이 확인했어요</div>
@@ -350,6 +425,7 @@ function ElderFlow({ step, form, setForm, goto, onSubmit }) {
   return (
     <section className="ask">
       <div className="stars" />
+      <div className="ask-progress" aria-hidden="true"><i style={{ width: `${((idx + 1) / INPUT_STEPS.length) * 100}%` }} /></div>
       <button className="back-btn" onClick={back} aria-label="이전으로">‹</button>
       <div className="ask-mark" aria-hidden="true">{MARK[step]}</div>
       <div className="elder-moon" aria-hidden="true" />
@@ -558,6 +634,7 @@ function Diagnosis({ z, name, timeUnknown, onPay }) {
       <div className="gcard">
         <h3><span className="gh">命</span> 그대의 명궁(命宮)에 앉은 별</h3>
         <div className="star-reveal">
+          <span className="orbit" aria-hidden="true" />
           <div className="star-hanja" style={effM.stars.length > 1 ? { fontSize: 52 } : {}}>
             {effM.stars.map((s) => STAR_HANJA[s]).join("·") || "空"}
           </div>
@@ -733,6 +810,7 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
           {PRODUCTS.map((p, i) => (
             <button key={p.id} className={"prod" + (prodIdx === i ? " on" : "")} onClick={() => selectProduct(i)}>
               {p.hot && <span className="prod-hot">인기</span>}
+              <span className="prod-radio" aria-hidden="true" />
               <span className="prod-name">{p.name}</span>
               <span className="prod-desc">{p.desc}</span>
               <span className="prod-price">
@@ -761,9 +839,24 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
           <div className="pr final"><span>최종 결제금액</span><span><span className="pct">-{pct}%</span>{price.toLocaleString("ko-KR")}원</span></div>
         </div>
 
-        <a className="paybtn" href={payUrl} target="_blank" rel="noopener noreferrer" onClick={() => { ev("pay_click", { tier: P.id }); setPaidClicked(true); }}>
+        <a
+          className="paybtn"
+          href={payUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => {
+            ev("pay_click", { tier: P.id });
+            setPaidClicked(true);
+            if (payUrl.includes("REPLACE")) e.preventDefault(); // 결제링크 미설정 시 테스트 모드
+          }}
+        >
           결제하기
         </a>
+        {payUrl.includes("REPLACE") && paidClicked && (
+          <p className="mono" style={{ fontSize: 10.5, color: "var(--gold)", textAlign: "center", marginTop: 8 }}>
+            [테스트 모드] 결제 링크 미설정 — content.js에 링크를 넣으면 실제 결제 페이지로 이동합니다
+          </p>
+        )}
 
         {paidClicked && (
           <div className="after-pay">

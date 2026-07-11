@@ -5,6 +5,7 @@ import { sb } from "../../../lib/supabase";
 import { SECTIONS, EXTRA_SECTIONS } from "../../../lib/report";
 const ALL_SECTIONS = [...SECTIONS, ...EXTRA_SECTIONS[3].filter((e) => !SECTIONS.find((s) => s.id === e.id))];
 import { CONFIG } from "../../../lib/content";
+import MatchCta from "./MatchCta";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +23,12 @@ export default async function ReportPage({ params }) {
   const client = sb();
   let lead = null;
   if (client) {
-    const { data } = await client.from("leads").select("name, birth, report, created_at").eq("token", params.token).single();
+    const { data } = await client.from("leads").select("id, name, birth, report, created_at, viewed_at").eq("token", params.token).single();
     lead = data;
+    // 최초 열람 시각 기록 (전달→열람 병목 측정용 · 실패해도 열람은 정상 진행)
+    if (lead && lead.report && !lead.viewed_at) {
+      try { await client.from("leads").update({ viewed_at: new Date().toISOString() }).eq("id", lead.id); } catch (e) {}
+    }
   }
 
   if (!lead || !lead.report) {
@@ -65,14 +70,7 @@ export default async function ReportPage({ params }) {
         );
       })}
 
-      <div className="card" style={{ marginTop: 8, marginBottom: 8, border: "1px solid rgba(255,120,134,0.4)", background: "linear-gradient(160deg,rgba(255,77,94,0.12),rgba(255,77,94,0.04))" }}>
-        <p style={{ fontSize: 15, color: "var(--tx)" }}>
-          <b style={{ color: "#ff8b98" }}>紅線 매칭</b> — 이 감정서를 받은 분에게만, 월하노인이 자미두수 궁합으로 직접 연을 잇는 블라인드 소개가 열려 있습니다.
-        </p>
-        <a href={CONFIG.KAKAO_CHANNEL_URL} target="_blank" rel="noreferrer" className="btn btn-seal" style={{ marginTop: 12, fontSize: 15 }}>
-          카카오톡으로 "매칭 신청" 보내기
-        </a>
-      </div>
+      <MatchCta kakaoUrl={CONFIG.KAKAO_CHANNEL_URL} />
 
       <footer style={{ paddingTop: 30 }}>
         <p>

@@ -14,6 +14,7 @@ export default function Admin() {
   const [sel, setSel] = useState([]);      // 매칭용 선택 (최대 2)
   const [preview, setPreview] = useState(null);
   const [matches, setMatches] = useState(null);
+  const [funnel, setFunnel] = useState(null);
 
   const load = async () => {
     setMsg("");
@@ -24,6 +25,9 @@ export default function Admin() {
     const mr = await fetch("/api/admin/match", { headers: { "x-admin-key": key } });
     const md = await mr.json();
     if (mr.ok) setMatches(md.matches);
+    const fr = await fetch("/api/admin/funnel", { headers: { "x-admin-key": key } });
+    const fd = await fr.json();
+    if (fr.ok) setFunnel(fd.funnel);
   };
 
   const toggleSel = (id) =>
@@ -111,6 +115,38 @@ export default function Admin() {
         <button className="btn" style={{ width: "auto", padding: "12px 22px" }} onClick={load}>불러오기</button>
       </div>
       {msg && <p className="mono" style={{ fontSize: 13, color: "var(--amethyst-hi)", marginBottom: 14 }}>{msg}</p>}
+
+      {funnel && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <h2 className="display" style={{ fontSize: 18, color: "var(--tx)", marginBottom: 4 }}>고객 여정 깔때기</h2>
+          <p className="mono" style={{ fontSize: 11, color: "var(--tx-dim)", marginBottom: 12 }}>
+            상단 퍼널(노출→클릭→랜딩→스크롤→문답)은 Meta 광고관리자 + Vercel Analytics에서:
+            방문수 → sec_why/royal/ask/170x/proof/final(스크롤 생존) → cta_start → step_1~6 → lead_submitted → diag_view → cta_pay_page → pay_view → pay_click/kakao_click
+          </p>
+          {(() => {
+            const base = funnel[0]?.n || 0;
+            return funnel.map((f, i) => {
+              const prev = i === 0 ? null : funnel[i - 1].n;
+              const pctBase = base ? Math.round((f.n / base) * 100) : 0;
+              const pctPrev = prev ? Math.round((f.n / prev) * 100) : null;
+              return (
+                <div key={f.id} style={{ marginBottom: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 3 }}>
+                    <span style={{ color: "var(--tx)" }}>{f.label}</span>
+                    <span className="mono" style={{ color: "var(--amethyst-hi)" }}>
+                      {f.n}{f.unit || "명"}
+                      {pctPrev != null && <span style={{ color: "var(--tx-dim)" }}> · 직전 대비 {pctPrev}%</span>}
+                    </span>
+                  </div>
+                  <div style={{ height: 7, background: "rgba(139,108,255,0.12)", borderRadius: 4, overflow: "hidden" }}>
+                    <i style={{ display: "block", height: "100%", width: `${Math.max(pctBase, f.n > 0 ? 3 : 0)}%`, background: i < 5 ? "var(--amethyst-hi, #b39dff)" : "#ff8b98" }} />
+                  </div>
+                </div>
+              );
+            });
+          })()}
+        </div>
+      )}
 
       {leads && leads.length === 0 && <p style={{ color: "var(--tx-dim)" }}>아직 들어온 디비가 없습니다.</p>}
 

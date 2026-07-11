@@ -7,6 +7,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { CONFIG, MATCH_CONFIG, MATCH_UI } from "../../../lib/content";
+import { ev } from "../../../lib/track";
 
 export default function MatchBox() {
   const { token } = useParams();
@@ -20,6 +21,7 @@ export default function MatchBox() {
       const res = await fetch(`/api/match?token=${token}`);
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "불러오기 실패");
+      if (!data) ev("matchbox_view", { cards: (d.cards || []).length });
       setData(d);
     } catch (e) { setErr(e.message); }
   };
@@ -27,6 +29,7 @@ export default function MatchBox() {
 
   const respond = async (matchId, accept) => {
     setBusy(true);
+    ev(accept ? "match_accept" : "match_decline");
     await fetch("/api/match", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -39,6 +42,7 @@ export default function MatchBox() {
   const saveKakao = async (matchId) => {
     if (!kakao.trim()) return;
     setBusy(true);
+    ev("match_kakao_set");
     await fetch("/api/match", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -130,7 +134,7 @@ export default function MatchBox() {
                     <span className={c.otherPaid ? "on" : ""}>상대의 성사비 {c.otherPaid ? "확인됨 ✓" : "대기"}</span>
                   </div>
                   {!c.myPaid && (
-                    <a className="m-accept" style={{ display: "block", textAlign: "center", textDecoration: "none" }} href={MATCH_CONFIG.PAYMENT_URL} target="_blank" rel="noopener noreferrer">
+                    <a className="m-accept" style={{ display: "block", textAlign: "center", textDecoration: "none" }} href={MATCH_CONFIG.PAYMENT_URL} target="_blank" rel="noopener noreferrer" onClick={() => ev("match_fee_click")}>
                       성사비 결제하기 ({MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원)
                     </a>
                   )}

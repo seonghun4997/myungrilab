@@ -218,6 +218,28 @@ function Mountains() {
   );
 }
 
+// ---------------- 랜딩 스크롤 생존 추적 ----------------
+// 각 섹션에 최초 1회 도달 시 sec_* 이벤트 발사 → 랜딩 어느 지점에서 이탈하는지 파악
+function useSectionTrack() {
+  useEffect(() => {
+    const els = document.querySelectorAll("[data-sec]");
+    const fired = new Set();
+    const io = new IntersectionObserver(
+      (ents) =>
+        ents.forEach((e) => {
+          const name = e.target.getAttribute("data-sec");
+          if (e.isIntersecting && !fired.has(name)) {
+            fired.add(name);
+            ev("sec_" + name);
+          }
+        }),
+      { threshold: 0.3 }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+}
+
 // ---------------- 스크롤 등장 & 카운트업 ----------------
 function useReveal() {
   useEffect(() => {
@@ -260,6 +282,7 @@ function CountUp({ end, suffix, duration = 1400 }) {
 // ---------------- 0. 롱폼 랜딩 ----------------
 function Landing({ onStart, onResume }) {
   useReveal();
+  useSectionTrack();
   return (
     <div className="land">
       {/* ═══ 히어로 ═══ */}
@@ -295,14 +318,14 @@ function Landing({ onStart, onResume }) {
       </section>
 
       {/* ═══ 도대체 왜 ═══ */}
-      <section className="lsec" style={{ textAlign: "center" }}>
+      <section className="lsec" data-sec="why" style={{ textAlign: "center" }}>
         <p className="l-why0 rv">도대체</p>
         <p className="l-why1 rv">왜?</p>
         <p className="l-why2 rv">자미두수가<br />이렇게 유명할까요?</p>
       </section>
 
       {/* ═══ 황실 권위 ═══ */}
-      <section className="lsec">
+      <section className="lsec" data-sec="royal">
         <div className="royal-card rv">
           <span className="royal-rail" aria-hidden="true">皇室秘傳</span>
           <span className="sec-kicker">壹 · 기원</span>
@@ -313,7 +336,7 @@ function Landing({ onStart, onResume }) {
       </section>
 
       {/* ═══ 카테고리 공격 ═══ */}
-      <section className="lsec" style={{ textAlign: "center" }}>
+      <section className="lsec" data-sec="ask" style={{ textAlign: "center" }}>
         <span className="sec-kicker rv">貳 · 질문</span>
         <h2 className="l-attack2 rv">
           아직도 <span className="strike-word">사주<i aria-hidden="true" /></span>만<br />보세요?
@@ -324,7 +347,7 @@ function Landing({ onStart, onResume }) {
       </section>
 
       {/* ═══ 170배 비교 ═══ */}
-      <section className="lsec">
+      <section className="lsec" data-sec="170x">
         <span className="sec-kicker rv">參 · 근거</span>
         <h2 className="l-title rv">{LANDING.COMPARE_T.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</h2>
         <p className="l-desc rv" style={{ marginBottom: 22 }}>{LANDING.COMPARE_D}</p>
@@ -357,7 +380,7 @@ function Landing({ onStart, onResume }) {
       </section>
 
       {/* ═══ 후기 or 검증 ═══ */}
-      <section className="lsec">
+      <section className="lsec" data-sec="proof">
         {REVIEWS.enabled && REVIEWS.items.length > 0 ? (
           <>
             <span className="sec-kicker rv">肆 · 후기</span>
@@ -384,7 +407,7 @@ function Landing({ onStart, onResume }) {
       </section>
 
       {/* ═══ 파이널 ═══ */}
-      <section className="lsec final-sec" style={{ textAlign: "center", paddingBottom: 190 }}>
+      <section className="lsec final-sec" data-sec="final" style={{ textAlign: "center", paddingBottom: 190 }}>
         <div className="final-moon" aria-hidden="true" />
         <h2 className="l-title rv" style={{ fontSize: 30, textAlign: "center" }}>
           {LANDING.FINAL_T.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}

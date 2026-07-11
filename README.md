@@ -27,7 +27,8 @@ create table if not exists leads (
   report jsonb,
   token text unique,
   intro text,
-  match_optin boolean default false
+  match_optin boolean default false,
+  viewed_at timestamptz
 );
 alter table leads enable row level security;
 ```
@@ -37,6 +38,7 @@ alter table leads enable row level security;
 alter table leads add column if not exists intro text;
 alter table leads add column if not exists match_optin boolean default false;
 alter table leads add column if not exists profile jsonb;
+alter table leads add column if not exists viewed_at timestamptz; -- 리포트 최초 열람 시각 (v14)
 
 create table if not exists matches (
   id uuid primary key default gen_random_uuid(),
@@ -107,3 +109,28 @@ PRICE(33,000) / PRICE_ORIGINAL(165,000) / PAYMENT_URL / KAKAO_CHANNEL_URL 교체
 ### 운영
 - 적용됨: 주문코드 — 결제 페이지에 6자리 코드 노출, 고객이 카톡으로 보내면 admin의 리드 token 앞 6자리와 대조
 - 적용됨: "지난 감정 다시 보기" — 재방문 시 히어로에서 바로 진단 복원
+
+
+## 고객 여정 계측 지도 (v14)
+
+| 여정 단계 | 지표 | 보는 곳 |
+|---|---|---|
+| 광고 노출→클릭 | CTR / CPC | Meta 광고관리자 (UTM은 리드에 저장) |
+| 랜딩 도착 | 방문수 | Vercel Analytics |
+| 스크롤 생존 | sec_why → sec_royal → sec_ask → sec_170x → sec_proof → sec_final | Vercel Analytics |
+| CTA 클릭 | cta_start | Vercel Analytics |
+| 문답 단계별 이탈 | step_1~6 (+ gender/birth/time/phone/name/concern_set) | Vercel Analytics |
+| 디비 제출 | lead_submitted | Vercel Analytics + /admin 깔때기 |
+| 무료 진단 열람 | diag_view | Vercel Analytics |
+| 결제 페이지 도달 | cta_pay_page → pay_view | Vercel Analytics |
+| 결제 버튼 | pay_click / kakao_click (+ product_select 티어) | Vercel Analytics + Meta(InitiateCheckout) |
+| 실결제 | /admin 결제 확인 체크 | /admin 깔때기 |
+| 리포트 전달 | 리포트 생성 수 (token) | /admin 깔때기 |
+| 리포트 열람 | report_view + viewed_at | Vercel Analytics + /admin 깔때기 |
+| 리포트 속 소개팅 | report_match_view(섹션 도달) / report_match_click(신청 클릭) | Vercel Analytics |
+| 매칭 신청 | match_apply / match_optin | /admin 깔때기 |
+| 인연 카드 발송 | matches 생성 | /admin 깔때기 |
+| 인연함 열람·응답 | matchbox_view / match_accept / match_decline | Vercel Analytics |
+| 매칭 성사 | 양측 수락 | /admin 깔때기 |
+| 성사비 결제 | match_fee_click → 양측 성사비 체크 | Vercel Analytics + /admin 깔때기 |
+| 아이디 공유 | match_kakao_set → 상호 공개 | /admin 깔때기 |

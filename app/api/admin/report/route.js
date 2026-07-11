@@ -1,13 +1,14 @@
 // ============================================================
-// /api/admin/report — 리드 1건의 전체 살풀이 리포트 생성 (ADMIN_KEY 필요)
-// 흐름: 리드 조회 → 생년월일로 명식 재계산 → 6섹션 병렬 생성 → 저장 → 열람 링크 반환
+// /api/admin/report — 리드 1건의 인연 감정서 생성 (ADMIN_KEY 필요)
+// 흐름: 리드 조회 → 양력→음력 변환 → 명반 계산 → 6섹션 병렬 생성 → 저장
 // ============================================================
 export const maxDuration = 60;
 
 import { sb } from "../../../../lib/supabase";
-import { computeSaju, REGIONS } from "../../../../lib/engine";
+import { computeZiwei } from "../../../../lib/ziwei";
 import { buildFacts, SECTIONS } from "../../../../lib/report";
 import { generateSection } from "../../../../lib/generate";
+import KLCmod from "korean-lunar-calendar";
 
 export async function POST(req) {
   try {
@@ -21,30 +22,31 @@ export async function POST(req) {
 
     const { data: lead, error } = await client.from("leads").select("*").eq("id", leadId).single();
     if (error || !lead) return Response.json({ error: "리드를 찾을 수 없습니다." }, { status: 404 });
-
-    // 이미 생성된 리포트가 있으면 재사용
-    if (lead.report && lead.token) {
-      return Response.json({ token: lead.token, reused: true });
-    }
+    if (lead.report && lead.token) return Response.json({ token: lead.token, reused: true });
 
     const b = lead.birth;
-    const lon = REGIONS.find((r) => r.name === b.region)?.lon ?? null;
-    const saju = computeSaju({ y: b.y, m: b.m, d: b.d, hour: b.hour, minute: b.minute || 0, gender: b.gender, lon });
-    const facts = buildFacts(saju);
+    const KLC = KLCmod.default || KLCmod;
+    const c = new KLC();
+    if (!c.setSolarDate(b.y, b.m, b.d)) throw new Error("음력 변환 실패");
+    const lun = c.getLunarCalendar();
+    const z = computeZiwei({
+      lunarYear: lun.year, lunarMonth: lun.month, lunarDay: lun.day,
+      hourBranch: b.slotIdx ?? 6,
+      gender: b.gender,
+      solarYear: b.y, solarMonth: b.m, solarDay: b.d,
+    });
+    const facts = buildFacts(z);
 
     const results = await Promise.all(
       SECTIONS.map(async (s) => {
-        try {
-          return [s.id, await generateSection(facts, s.id)];
-        } catch (e) {
-          return [s.id, null];
-        }
+        try { return [s.id, await generateSection(facts, s.id)]; }
+        catch (e) { return [s.id, null]; }
       })
     );
     const report = Object.fromEntries(results);
     const failed = results.filter(([, t]) => !t).map(([id]) => id);
     if (failed.length === SECTIONS.length) {
-      return Response.json({ error: "리포트 생성에 모두 실패했습니다. API 키/크레딧을 확인하세요." }, { status: 502 });
+      return Response.json({ error: "감정서 생성에 모두 실패했습니다. API 키/크레딧을 확인하세요." }, { status: 502 });
     }
 
     const token = crypto.randomUUID().replace(/-/g, "").slice(0, 20);

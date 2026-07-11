@@ -14,7 +14,7 @@ export async function GET(req) {
   if (!client) return Response.json({ error: "Supabase가 설정되지 않았습니다." }, { status: 500 });
   const { data, error } = await client
     .from("leads")
-    .select("id, created_at, name, phone, birth, sal_names, sal_count, quiz_hits, paid, token")
+    .select("*")
     .order("created_at", { ascending: false })
     .limit(200);
   if (error) return Response.json({ error: error.message }, { status: 500 });

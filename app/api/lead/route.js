@@ -16,13 +16,14 @@ export async function POST(req) {
       console.warn("Supabase 미설정 — 리드가 저장되지 않았습니다.");
       return Response.json({ id: null, saved: false });
     }
+    const token = crypto.randomUUID().replace(/-/g, "").slice(0, 20);
     const { data, error } = await client
       .from("leads")
-      .insert({ name, phone: String(phone).replace(/[^0-9]/g, ""), birth, sal_names: salNames || [], sal_count: salCount ?? null })
-      .select("id")
+      .insert({ name, phone: String(phone).replace(/[^0-9]/g, ""), birth, sal_names: salNames || [], sal_count: salCount ?? null, token })
+      .select("id, token")
       .single();
     if (error) throw error;
-    return Response.json({ id: data.id, saved: true });
+    return Response.json({ id: data.id, token: data.token, saved: true });
   } catch (e) {
     console.error(e);
     return Response.json({ id: null, saved: false });
@@ -31,10 +32,17 @@ export async function POST(req) {
 
 export async function PATCH(req) {
   try {
-    const { id, quizHits } = await req.json();
+    const { id, quizHits, intro, matchOptin, profile } = await req.json();
     const client = sb();
     if (!client || !id) return Response.json({ ok: false });
-    await client.from("leads").update({ quiz_hits: quizHits }).eq("id", id);
+    const upd = {};
+    if (quizHits !== undefined) upd.quiz_hits = quizHits;
+    if (intro !== undefined) upd.intro = String(intro).slice(0, 500);
+    if (matchOptin !== undefined) upd.match_optin = !!matchOptin;
+    if (profile !== undefined) upd.profile = profile;
+    if (Object.keys(upd).length === 0) return Response.json({ ok: false });
+    const { error } = await client.from("leads").update(upd).eq("id", id);
+    if (error) { console.error(error.message); return Response.json({ ok: false }); }
     return Response.json({ ok: true });
   } catch (e) {
     return Response.json({ ok: false });

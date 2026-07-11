@@ -2,7 +2,8 @@
 // /r/[token] — 결제 고객에게 카카오톡으로 전달하는 리포트 열람 페이지
 // ============================================================
 import { sb } from "../../../lib/supabase";
-import { SECTIONS } from "../../../lib/report";
+import { SECTIONS, EXTRA_SECTIONS } from "../../../lib/report";
+const ALL_SECTIONS = [...SECTIONS, ...EXTRA_SECTIONS[3].filter((e) => !SECTIONS.find((s) => s.id === e.id))];
 import { CONFIG } from "../../../lib/content";
 
 export const dynamic = "force-dynamic";
@@ -41,7 +42,7 @@ export default async function ReportPage({ params }) {
   return (
     <main className="wrap" style={{ paddingTop: 40, paddingBottom: 60 }}>
       <div style={{ textAlign: "center", marginBottom: 30 }}>
-        <div className="eyebrow">{CONFIG.BRAND_HANJA} · 운명의 짝 정밀 감정서</div>
+        <div className="eyebrow">{CONFIG.BRAND_HANJA} · 자미두수 정밀 감정서</div>
         <h1 className="display display" style={{ fontSize: 27, margin: "14px 0 6px" }}>
           {lead.name} — 인연 감정서
         </h1>
@@ -50,7 +51,7 @@ export default async function ReportPage({ params }) {
         </p>
       </div>
 
-      {SECTIONS.map((s) => {
+      {ALL_SECTIONS.map((s) => {
         const text = lead.report[s.id];
         if (!text) return null;
         return (

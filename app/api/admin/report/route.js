@@ -6,7 +6,7 @@ export const maxDuration = 60;
 
 import { sb } from "../../../../lib/supabase";
 import { computeZiwei } from "../../../../lib/ziwei";
-import { buildFacts, SECTIONS } from "../../../../lib/report";
+import { buildFacts, SECTIONS, EXTRA_SECTIONS } from "../../../../lib/report";
 import { generateSection } from "../../../../lib/generate";
 import KLCmod from "korean-lunar-calendar";
 
@@ -35,17 +35,19 @@ export async function POST(req) {
       gender: b.gender,
       solarYear: b.y, solarMonth: b.m, solarDay: b.d,
     });
-    const facts = buildFacts(z);
+    const facts = buildFacts(z, b.concern || null);
+    const tier = lead.quiz_hits && [1, 2, 3].includes(lead.quiz_hits) ? lead.quiz_hits : 1;
+    const sectionList = [...SECTIONS, ...(EXTRA_SECTIONS[tier] || [])];
 
     const results = await Promise.all(
-      SECTIONS.map(async (s) => {
+      sectionList.map(async (s) => {
         try { return [s.id, await generateSection(facts, s.id)]; }
         catch (e) { return [s.id, null]; }
       })
     );
     const report = Object.fromEntries(results);
     const failed = results.filter(([, t]) => !t).map(([id]) => id);
-    if (failed.length === SECTIONS.length) {
+    if (failed.length === sectionList.length) {
       return Response.json({ error: "감정서 생성에 모두 실패했습니다. API 키/크레딧을 확인하세요." }, { status: 502 });
     }
 

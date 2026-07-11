@@ -1,10 +1,15 @@
 "use client";
 // ============================================================
-// 자미연 퍼널: 히어로 → 월하노인 문답 → 무료 감정+봉인 → 결제+紅線매칭
+// 자미연 퍼널 (용용 골격 80% + 자미연 스킨 20%)
+// 롱폼 랜딩 → 문답(성별~고민) → 총운 진단(무료+봉인) → 3단 상품 결제 → 紅線
 // ============================================================
 import { useState, useMemo, useRef, useEffect } from "react";
-import { computeZiwei, fateYears, JI, STAR_HANJA } from "../lib/ziwei";
-import { CONFIG, ELDER, OFFER, TRUST, REPORT_ITEMS, MATCHING, TIME_SLOTS, STAR_SELF, STAR_SPOUSE, STAR_TAG, EMPTY_SPOUSE, SOCIAL_PROOF, AVATARS, INTERESTS, MATCH_UI } from "../lib/content";
+import { computeZiwei, JI, STAR_HANJA } from "../lib/ziwei";
+import {
+  CONFIG, ELDER, OFFER, TRUST, REPORT_ITEMS, MATCHING, TIME_SLOTS,
+  STAR_SELF, STAR_SPOUSE, STAR_TAG, EMPTY_SPOUSE, SOCIAL_PROOF,
+  AVATARS, INTERESTS, MATCH_UI, LANDING, PRODUCTS, REVIEWS,
+} from "../lib/content";
 import { track } from "@vercel/analytics";
 
 const FBQ_MAP = { lead_submitted: "Lead", pay_click: "InitiateCheckout", pay_view: "ViewContent", match_apply: "SubmitApplication" };
@@ -18,7 +23,6 @@ function ev(name, data) {
   } catch (e) {}
 }
 
-// UTM 캡처 (첫 방문 시 저장 → 리드에 첨부: 어떤 광고 소재가 결제를 냈는지 측정)
 function captureUtm() {
   try {
     const saved = localStorage.getItem("jm_utm");
@@ -34,14 +38,14 @@ function captureUtm() {
   } catch (e) { return {}; }
 }
 
-const INPUT_STEPS = ["gender", "birth", "time", "phone", "name"];
+const INPUT_STEPS = ["gender", "birth", "time", "phone", "name", "concern"];
 
 export default function Home() {
   const [step, setStep] = useState("intro");
   const [form, setForm] = useState({
     gender: null, cal: "solar", leap: false,
     y: null, m: null, d: null, slot: null, timeUnknown: false,
-    phone: "", name: "", consent: false,
+    phone: "", name: "", concern: "", consent: false,
   });
   const [ziwei, setZiwei] = useState(null);
   const [leadId, setLeadId] = useState(null);
@@ -57,20 +61,29 @@ export default function Home() {
       const f = localStorage.getItem("jm_form");
       if (f) {
         const saved = JSON.parse(f);
-        setForm((prev) => ({ ...prev, ...saved, consent: false })); // 동의는 매번 새로
+        setForm((prev) => ({ ...prev, ...saved, consent: false }));
       }
     } catch (e) {}
   }, []);
 
   useEffect(() => {
-    // 입력 진행상황 자동 저장 — 이탈 후 재방문 시 이어서
     try {
       const { consent, ...rest } = form;
       localStorage.setItem("jm_form", JSON.stringify(rest));
     } catch (e) {}
   }, [form]);
 
-  // 지난 감정 이어보기 (리드 재저장 없이 재계산만)
+  const goto = (s) => {
+    setStep(s);
+    ev("step_" + s);
+    setTimeout(() => topRef.current?.scrollIntoView({ behavior: "auto" }), 20);
+  };
+
+  const startFunnel = () => {
+    import("korean-lunar-calendar").catch(() => {});
+    goto("gender");
+  };
+
   const resume = async () => {
     if (!lastSnap) return;
     try {
@@ -92,24 +105,11 @@ export default function Home() {
     } catch (e) {}
   };
 
-  const goto = (s) => {
-    setStep(s);
-    ev("step_" + s);
-    setTimeout(() => topRef.current?.scrollIntoView({ behavior: "auto" }), 20);
-  };
-
-  const startFunnel = () => {
-    import("korean-lunar-calendar").catch(() => {}); // 미리 받아둠 — 제출 순간 지연 제거
-    goto("gender");
-  };
-
   const submitAll = async () => {
-    // 1) 양력 확정
     let sy = form.y, sm = form.m, sd = form.d;
     let mod;
-    try {
-      mod = await import("korean-lunar-calendar");
-    } catch (e) { alert("달력 모듈 로드 실패 — 새로고침 후 다시 시도해주세요."); return; }
+    try { mod = await import("korean-lunar-calendar"); }
+    catch (e) { alert("달력 모듈 로드 실패 — 새로고침 후 다시 시도해주세요."); return; }
     const KLC = mod.default || mod;
     if (form.cal === "lunar") {
       const c = new KLC();
@@ -120,45 +120,44 @@ export default function Home() {
       const s = c.getSolarCalendar();
       sy = s.year; sm = s.month; sd = s.day;
     }
-    // 2) 음력 확정 (자미두수는 음력 기준)
     const c2 = new KLC();
-    if (!c2.setSolarDate(sy, sm, sd)) {
-      alert("지원하지 않는 날짜입니다.");
-      goto("birth"); return;
-    }
+    if (!c2.setSolarDate(sy, sm, sd)) { alert("지원하지 않는 날짜입니다."); goto("birth"); return; }
     const lun = c2.getLunarCalendar();
 
-    // 3) 명반 계산
     const z = computeZiwei({
       lunarYear: lun.year, lunarMonth: lun.month, lunarDay: lun.day,
-      hourBranch: form.slot,
-      gender: form.gender,
+      hourBranch: form.slot, gender: form.gender,
       solarYear: sy, solarMonth: sm, solarDay: sd,
     });
     setZiwei(z);
     goto("checking");
 
-    // 재방문 이어보기용 스냅샷
     try {
       localStorage.setItem("jm_last", JSON.stringify({ y: sy, m: sm, d: sd, slot: form.slot, gender: form.gender, name: form.name.trim() }));
     } catch (e) {}
 
-    // 4) 디비 저장
     try {
-      const buche = z.palaceAt("부처궁");
-      const eff = z.effectiveMajors(buche);
-      const fy = fateYears(z, sy, 1);
+      const myeong = z.palaceAt("명궁");
+      const eff = z.effectiveMajors(myeong);
+      const nowYear = new Date().getFullYear();
+      const nd = z.daehan.map((d) => ({ ...d, startYear: sy + d.startAge - 1 })).find((d) => d.startYear >= nowYear);
       const res = await fetch("/api/lead", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           name: form.name.trim(),
           phone: form.phone.replace(/[^0-9]/g, ""),
-          birth: { y: sy, m: sm, d: sd, slotIdx: form.slot, slot: form.timeUnknown ? "미상(오시 추정)" : TIME_SLOTS[form.slot].label, gender: form.gender, cal: form.cal, leap: form.leap, utm: captureUtm() },
+          birth: {
+            y: sy, m: sm, d: sd, slotIdx: form.slot,
+            slot: form.timeUnknown ? "미상(오시 추정)" : TIME_SLOTS[form.slot].label,
+            gender: form.gender, cal: form.cal, leap: form.leap,
+            concern: form.concern.trim().slice(0, 200) || null,
+            utm: captureUtm(),
+          },
           salNames: [
-            `명궁:${z.palaceAt("명궁").majors.join("·") || "차성"}`,
-            `부처궁:${eff.stars.join("·")}${eff.borrowed ? "(차성)" : ""}`,
-            fy.length ? `인연해:${fy[0]}` : "",
+            `명궁:${eff.stars.join("·") || "공궁"}`,
+            `재백:${z.effectiveMajors(z.palaceAt("재백궁")).stars.join("·")}`,
+            nd ? `대운:${nd.startYear}` : "",
           ].filter(Boolean),
           salCount: eff.stars.length,
         }),
@@ -171,7 +170,7 @@ export default function Home() {
         s.token = data.token || null;
         localStorage.setItem("jm_last", JSON.stringify(s));
       } catch (e) {}
-      ev("lead_submitted", { saved: !!data.id });
+      ev("lead_submitted", { saved: !!data.id, concern: !!form.concern.trim() });
     } catch (e) { ev("lead_submitted", { saved: false }); }
     setTimeout(() => goto("diag"), 2200);
   };
@@ -179,7 +178,7 @@ export default function Home() {
   return (
     <main className="phone">
       <div ref={topRef} />
-      {step === "intro" && <Intro onStart={startFunnel} onResume={lastSnap ? resume : null} />}
+      {step === "intro" && <Landing onStart={startFunnel} onResume={lastSnap ? resume : null} />}
       {INPUT_STEPS.includes(step) && (
         <ElderFlow step={step} form={form} setForm={setForm} goto={goto} onSubmit={submitAll} />
       )}
@@ -190,7 +189,7 @@ export default function Home() {
   );
 }
 
-// ---------------- 사이트 푸터 (문의·표기) ----------------
+// ---------------- 사이트 푸터 ----------------
 function SiteFooter() {
   return (
     <footer style={{ position: "relative", zIndex: 2 }}>
@@ -219,65 +218,130 @@ function Mountains() {
   );
 }
 
-// ---------------- 0. 히어로 ----------------
-function Intro({ onStart, onResume }) {
+// ---------------- 0. 롱폼 랜딩 ----------------
+function Landing({ onStart, onResume }) {
   return (
-    <section className="hero">
-      <div className="stars" /><div className="stars2" />
-      <div className="moon" aria-hidden="true" />
+    <div className="land">
+      {/* 히어로 */}
+      <section className="hero" style={{ minHeight: "92svh" }}>
+        <div className="stars" /><div className="stars2" />
+        <div className="moon" aria-hidden="true" />
+        <div className="hero-top">
+          <span className="logo">{CONFIG.BRAND_HANJA}</span>
+          <span className="line" aria-hidden="true" />
+          <span className="eyebrow">{CONFIG.CLAIM}</span>
+        </div>
+        <div className="hero-copy" style={{ marginTop: "17svh" }}>
+          <h1 className="hook">
+            {LANDING.HOOK_TOP}<br />
+            <span className="fate">{LANDING.HOOK_YEAR}<span className="veil" aria-hidden="true">9</span>년</span>{LANDING.HOOK_BOTTOM.replace("년", "")}
+          </h1>
+        </div>
+        <Mountains />
+        <div className="scroll-hint" aria-hidden="true">︾</div>
+      </section>
 
-      <div className="hero-top">
-        <span className="logo">{CONFIG.BRAND_HANJA}</span>
-        <span className="line" aria-hidden="true" />
-        <span className="eyebrow">{CONFIG.CLAIM}</span>
-      </div>
+      {/* 도대체 왜 */}
+      <section className="lsec">
+        <p className="l-why1">{LANDING.WHY1}</p>
+        <p className="l-why2">{LANDING.WHY2}</p>
+      </section>
 
-      <svg className="thread" viewBox="0 0 430 780" preserveAspectRatio="none" aria-hidden="true">
-        <path d="M 352 128 C 300 240, 120 300, 150 420 S 330 560, 215 690" />
-      </svg>
-      <div className="knot" style={{ right: "16%", top: "14.5%" }} aria-hidden="true" />
+      {/* 황실 권위 */}
+      <section className="lsec">
+        <span className="eyebrow">皇室秘傳</span>
+        <h2 className="l-title">{LANDING.ROYAL_T.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</h2>
+        <p className="l-desc">{LANDING.ROYAL_D}</p>
+      </section>
 
-      <div className="hero-copy">
-        <span className="eyebrow">月下老人이 감정합니다</span>
-        <h1 className="hook">
-          내 <span className="fate">운명의 짝</span>은<br />
-          202<span className="veil" aria-hidden="true">7</span>년에 나타납니다.
-        </h1>
-        <p className="hero-sub">
-          천 년 동안 황실이 혼인을 정한 <b>자미두수 부처궁(夫妻宮)</b> —<br />
-          당신의 짝은 이미 명반에 적혀 있습니다.
-        </p>
-      </div>
+      {/* 카테고리 공격 */}
+      <section className="lsec">
+        <h2 className="l-title l-attack">{LANDING.ATTACK_T.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</h2>
+        <p className="l-desc">{LANDING.ATTACK_D.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</p>
+      </section>
 
-      <Mountains />
+      {/* 170배 비교 */}
+      <section className="lsec">
+        <h2 className="l-title">{LANDING.COMPARE_T.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</h2>
+        <p className="l-desc" style={{ marginBottom: 20 }}>{LANDING.COMPARE_D}</p>
+        <div className="stat-row">
+          <div className="stat">
+            <span className="stat-name">{LANDING.COMPARE_A.name}</span>
+            <b className="stat-num">{LANDING.COMPARE_A.num}</b>
+            <span className="stat-sub">{LANDING.COMPARE_A.sub}</span>
+          </div>
+          <div className="stat hot">
+            <span className="stat-name">{LANDING.COMPARE_B.name}</span>
+            <b className="stat-num">{LANDING.COMPARE_B.num}</b>
+            <span className="stat-sub">{LANDING.COMPARE_B.sub}</span>
+          </div>
+        </div>
+        <div className="check-list">
+          {LANDING.CHECKS.map((t) => (
+            <p key={t}><span className="ck">✓</span>{t}</p>
+          ))}
+        </div>
+      </section>
 
-      <div className="hero-cta-zone">
+      {/* 후기 or 신뢰 */}
+      <section className="lsec">
+        {REVIEWS.enabled && REVIEWS.items.length > 0 ? (
+          <>
+            <h2 className="l-title" style={{ fontSize: 24 }}>리뷰 <span style={{ color: "var(--gold)" }}>{REVIEWS.ratingLine}</span></h2>
+            <p className="l-desc" style={{ marginBottom: 16 }}>{CONFIG.BRAND} 이용자들의 실제 후기입니다.</p>
+            {REVIEWS.items.map((r, i) => (
+              <div className="review" key={i}>
+                <div className="rv-top"><b>{r.mask}</b><span>{r.ilju}</span><span className="rv-star">★5.0</span><span className="rv-date">{r.date}</span></div>
+                <p>{r.text}</p>
+              </div>
+            ))}
+          </>
+        ) : (
+          <>
+            <span className="eyebrow">檢證</span>
+            <h2 className="l-title" style={{ fontSize: 24 }}>별의 위치는<br />사람이 찍지 않습니다</h2>
+            <div className="check-list" style={{ marginTop: 16 }}>
+              {TRUST.map((t) => <p key={t}><span className="ck">✓</span>{t}</p>)}
+              <p><span className="ck">✓</span>좋은 말만 하지 않습니다 — 걸리는 배치까지 전부 말씀드립니다</p>
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* 파이널 */}
+      <section className="lsec" style={{ textAlign: "center", paddingBottom: 180 }}>
+        <h2 className="l-title" style={{ display: "inline-block", textAlign: "center" }}>
+          {LANDING.FINAL_T.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}
+        </h2>
+        {onResume && <button className="resume-chip" onClick={onResume}>지난 감정 다시 보기 →</button>}
+        <SiteFooter />
+      </section>
+
+      {/* 하단 고정 CTA (용용식) */}
+      <div className="land-bar">
         {SOCIAL_PROOF.enabled && (
-          <div className="social-pill"><span className="ht">🧵</span> <b>{SOCIAL_PROOF.buyers}명</b>이 붉은 실을 확인했어요</div>
+          <div className="social-pill">💜 <b>{SOCIAL_PROOF.buyers}명</b>이 확인했어요</div>
         )}
         <button className="cta" onClick={() => { ev("cta_start"); onStart(); }}>
-          내 운명의 짝 확인하기
-          <small>무료 감정 · 회원가입 없음 · 3분</small>
+          {LANDING.CTA}
+          <small>{LANDING.CTA_SUB}</small>
         </button>
-        {onResume && (
-          <button className="resume-chip" onClick={onResume}>지난 감정 다시 보기 →</button>
-        )}
       </div>
-    </section>
+    </div>
   );
 }
 
-// ---------------- 1. 월하노인 문답 ----------------
+// ---------------- 1. 노인 문답 ----------------
 function ElderFlow({ step, form, setForm, goto, onSubmit }) {
   const idx = INPUT_STEPS.indexOf(step);
   const next = () => goto(INPUT_STEPS[idx + 1]);
   const back = () => goto(idx === 0 ? "intro" : INPUT_STEPS[idx - 1]);
-  const NUM = { gender: "問 一", birth: "問 二", time: "問 三", phone: "問 四", name: "問 五" };
-  const MARK = { gender: "緣", birth: "生", time: "時", phone: "絡", name: "名" };
+  const NUM = { gender: "問 一", birth: "問 二", time: "問 三", phone: "問 四", name: "問 五", concern: "問 六" };
+  const MARK = { gender: "性", birth: "生", time: "時", phone: "絡", name: "名", concern: "憂" };
   const E = ELDER[step];
 
   const rows = [];
-  if (form.name && step !== "name") rows.push({ k: "이름", v: form.name, s: "name" });
+  if (form.name && idx > INPUT_STEPS.indexOf("name")) rows.push({ k: "이름", v: form.name, s: "name" });
   if (form.phone && idx > INPUT_STEPS.indexOf("phone")) rows.push({ k: "연락처", v: form.phone, s: "phone" });
   if (form.slot != null && idx > INPUT_STEPS.indexOf("time")) rows.push({ k: "생시", v: form.timeUnknown ? "미상(오시 추정)" : TIME_SLOTS[form.slot].label, s: "time" });
   if (form.y && idx > INPUT_STEPS.indexOf("birth")) rows.push({ k: "생년월일", v: `${form.y}년 ${form.m}월 ${form.d}일 (${form.cal === "solar" ? "양력" : "음력"})`, s: "birth" });
@@ -305,7 +369,8 @@ function ElderFlow({ step, form, setForm, goto, onSubmit }) {
           {step === "birth" && <BirthInput form={form} setForm={setForm} onDone={next} />}
           {step === "time" && <TimeInput form={form} setForm={setForm} onDone={next} />}
           {step === "phone" && <PhoneInput form={form} setForm={setForm} onDone={next} />}
-          {step === "name" && <NameInput form={form} setForm={setForm} onDone={onSubmit} />}
+          {step === "name" && <NameInput form={form} setForm={setForm} onDone={next} />}
+          {step === "concern" && <ConcernInput form={form} setForm={setForm} onDone={onSubmit} />}
         </div>
 
         {rows.length > 0 && (
@@ -323,8 +388,8 @@ function ElderFlow({ step, form, setForm, goto, onSubmit }) {
       {step === "gender" && (
         <div className="gender-sheet">
           <h2 className="sheet-q">{ELDER.gender.q}</h2>
-          <button className="sheet-btn" onClick={() => { setForm({ ...form, gender: "M" }); ev("gender_set"); next(); }}>남자입니다</button>
           <button className="sheet-btn" onClick={() => { setForm({ ...form, gender: "F" }); ev("gender_set"); next(); }}>여자입니다</button>
+          <button className="sheet-btn" onClick={() => { setForm({ ...form, gender: "M" }); ev("gender_set"); next(); }}>남자입니다</button>
         </div>
       )}
     </section>
@@ -358,15 +423,8 @@ function BirthInput({ form, setForm, onDone }) {
         <button className={form.cal === "solar" ? "on" : ""} onClick={() => setForm({ ...form, cal: "solar" })}>양력</button>
         <button className={form.cal === "lunar" ? "on" : ""} onClick={() => setForm({ ...form, cal: "lunar" })}>음력</button>
       </div>
-      <input
-        className="field"
-        inputMode="numeric"
-        placeholder="0000년 00월 00일"
-        value={disp}
-        onChange={(e) => setVal(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && commit()}
-        autoFocus
-      />
+      <input className="field" inputMode="numeric" placeholder="0000년 00월 00일" value={disp}
+        onChange={(e) => setVal(e.target.value)} onKeyDown={(e) => e.key === "Enter" && commit()} autoFocus />
       {problem && <p className="input-hint">{problem}</p>}
       {form.cal === "lunar" && (
         <label className="chk"><input type="checkbox" checked={form.leap} onChange={(e) => setForm({ ...form, leap: e.target.checked })} /> 윤달</label>
@@ -378,13 +436,19 @@ function BirthInput({ form, setForm, onDone }) {
 
 function TimeInput({ form, setForm, onDone }) {
   return (
-    <div className="slot-grid">
-      {TIME_SLOTS.map((s, i) => (
-        <button key={s.label} className={"slot-btn" + (form.slot === i ? " on" : "")}
-          onClick={() => { setForm({ ...form, slot: i }); ev("time_set"); onDone(); }}>
-          {s.label}
+    <div>
+      <div className="slot-grid">
+        <button className={"slot-btn" + (form.timeUnknown ? " on" : "")}
+          onClick={() => { setForm({ ...form, slot: 6, timeUnknown: true }); ev("time_set", { known: false }); onDone(); }}>
+          시간 모름 (정오 기준 추정 명반 — 정밀도 낮아짐)
         </button>
-      ))}
+        {TIME_SLOTS.map((s, i) => (
+          <button key={s.label} className={"slot-btn" + (form.slot === i && !form.timeUnknown ? " on" : "")}
+            onClick={() => { setForm({ ...form, slot: i, timeUnknown: false }); ev("time_set", { known: true }); onDone(); }}>
+            {s.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -415,8 +479,28 @@ function NameInput({ form, setForm, onDone }) {
         <input type="checkbox" checked={form.consent} onChange={(e) => setForm({ ...form, consent: e.target.checked })} />
         <span>만 19세 이상이며, <a href="/privacy" target="_blank">개인정보 수집·이용</a>에 동의합니다 (감정 산출·전달 목적)</span>
       </label>
-      <button className="go-cta" disabled={!valid} onClick={() => { ev("name_set"); onDone(); }}>
-        내 붉은 실 확인하기 ›
+      <button className="next" disabled={!valid} onClick={() => { ev("name_set"); onDone(); }}>다 음</button>
+    </div>
+  );
+}
+
+function ConcernInput({ form, setForm, onDone }) {
+  return (
+    <div>
+      <textarea
+        className="concern-ta"
+        placeholder="이직인지, 그 사람인지, 돈인지 — 적어두면 감정서에서 답해줌세."
+        value={form.concern}
+        maxLength={200}
+        onChange={(e) => setForm({ ...form, concern: e.target.value })}
+        autoFocus
+      />
+      <p className="concern-count">{form.concern.length}/200</p>
+      <button className="go-cta" onClick={() => { ev("concern_set", { has: !!form.concern.trim() }); onDone(); }}>
+        명반 분석 시작하기 ›
+      </button>
+      <button className="skip-link" onClick={() => { setForm({ ...form, concern: "" }); ev("concern_skip"); onDone(); }}>
+        딱히 없네, 바로 봐주시게
       </button>
     </div>
   );
@@ -436,78 +520,96 @@ function Checking() {
   );
 }
 
-// ---------------- 3. 무료 감정 + 봉인 ----------------
+// ---------------- 3. 총운 진단 (무료 + 봉인) ----------------
 function firstSentence(text) {
   const m = text.match(/^.*?다\./);
   return m ? m[0] : text.slice(0, 45);
 }
 
 function Diagnosis({ z, name, timeUnknown, onPay }) {
-  const buche = z.palaceAt("부처궁");
-  const eff = z.effectiveMajors(buche);
-  const mainStar = eff.stars[0];
-  const spouseText = mainStar ? STAR_SPOUSE[mainStar] : EMPTY_SPOUSE;
-  const fy = useMemo(() => fateYears(z, z.input.solarYear, 3), [z]);
+  const myeong = z.palaceAt("명궁");
+  const effM = z.effectiveMajors(myeong);
+  const mainStar = effM.stars[0];
+  const selfText = mainStar ? STAR_SELF[mainStar] : "명궁이 비어 맞은편 별을 빌려 쓰는 명 — 환경과 시기가 남들보다 크게 작용하는, 열린 그릇입니다.";
+
+  const jaebaek = z.effectiveMajors(z.palaceAt("재백궁")).stars;
+  const buche = z.effectiveMajors(z.palaceAt("부처궁"));
+  const spouseStar = buche.stars[0];
+  const spouseText = spouseStar ? STAR_SPOUSE[spouseStar] : EMPTY_SPOUSE;
+
+  const nowYear = new Date().getFullYear();
+  const nd = useMemo(
+    () => z.daehan.map((d) => ({ ...d, startYear: z.input.solarYear + d.startAge - 1 })).find((d) => d.startYear >= nowYear),
+    [z] // eslint-disable-line
+  );
   const giStar = Object.entries(z.sahwa).find(([, k]) => k === "기")?.[0];
-  useEffect(() => { ev("diag_view", { star: mainStar || "공궁", borrowed: eff.borrowed }); }, []); // eslint-disable-line
+  useEffect(() => { ev("diag_view", { star: mainStar || "공궁" }); }, []); // eslint-disable-line
 
   return (
     <section className="diag">
       <div className="stars" />
 
-      <p className="whisper">{name ? `${name}...` : "허어..."}<br />실이 팽팽하게 당겨져 있군.</p>
+      <p className="whisper">{name ? `${name}...` : "허어..."}<br />별이 크게 움직이는 명이군.</p>
       {timeUnknown && (
         <p className="tu-note">※ 시진 미상 — 정오(午時) 기준 추정 명반일세. 태어난 시를 확인해 오면 카카오톡으로 다시 봐줌세.</p>
       )}
 
-      {/* 부처궁 공개 */}
+      {/* 명궁 — 대공개 */}
       <div className="gcard">
-        <h3><span className="gh">緣</span> 그대의 부처궁(夫妻宮)에 앉은 별</h3>
+        <h3><span className="gh">命</span> 그대의 명궁(命宮)에 앉은 별</h3>
         <div className="star-reveal">
-          <div className="star-hanja" style={eff.stars.length > 1 ? { fontSize: 52 } : {}}>
-            {eff.stars.map((s) => STAR_HANJA[s]).join("·") || "空"}
+          <div className="star-hanja" style={effM.stars.length > 1 ? { fontSize: 52 } : {}}>
+            {effM.stars.map((s) => STAR_HANJA[s]).join("·") || "空"}
           </div>
-          <div className="star-name">{eff.stars.map((s) => s + "성").join(" · ") || "공궁(空宮)"}{eff.borrowed && eff.stars.length > 0 ? " — 차성(借星)" : ""}</div>
+          <div className="star-name">{effM.stars.map((s) => s + "성").join(" · ") || "공궁(空宮)"}{effM.borrowed && effM.stars.length > 0 ? " — 차성(借星)" : ""}</div>
           {mainStar && <div className="star-tag">{STAR_TAG[mainStar]}</div>}
         </div>
-        <p className="open-tx">{firstSentence(spouseText).replace(/^그대의 짝은/, "그대의 짝은 ")}</p>
+        <p className="open-tx">{firstSentence(selfText)}</p>
         <p className="blur-tx" aria-hidden="true">
-          {spouseText.slice(firstSentence(spouseText).length)} 이 짝을 만나게 되는 경로와 첫 만남에서 그대가 느낄 감정, 서로를 알아보는 신호, 그리고 이 인연이 깊어지는 조건까지 — 명반에는 전부 적혀 있습니다.
+          {selfText.slice(firstSentence(selfText).length)} 이 별이 그대의 재물·직업·인연에서 각각 어떤 얼굴로 나타나는지, 12궁 전체를 펴면 전부 드러납니다.
         </p>
         <div className="lockline">🔒 정식 감정서에서 개봉</div>
       </div>
 
-      {/* 명궁 한 줄 (무료 신뢰 적립) */}
-      {z.palaceAt("명궁").majors[0] && (
-        <div className="gcard">
-          <h3><span className="gh">命</span> 그대라는 사람 — {z.palaceAt("명궁").majors.map((s) => s + "성").join("·")}</h3>
-          <p className="open-tx">{firstSentence(STAR_SELF[z.palaceAt("명궁").majors[0]])}</p>
-          <p className="blur-tx" aria-hidden="true">{STAR_SELF[z.palaceAt("명궁").majors[0]].slice(firstSentence(STAR_SELF[z.palaceAt("명궁").majors[0]]).length)} 그대가 사랑에서 반복하는 패턴과 그 이유는...</p>
-          <div className="lockline">🔒 정식 감정서에서 개봉</div>
-        </div>
-      )}
+      <p className="whisper" style={{ fontSize: 21 }}>그대의 대운이<br />언제 시작되는지, 다 적혀 있네.</p>
 
-      <p className="whisper" style={{ fontSize: 21 }}>다만...<br />때를 모르면 스쳐 지나가네.</p>
-
-      {/* 인연의 해 */}
+      {/* 대운 — 히어로 훅 회수 */}
       <div className="gcard">
-        <h3><span className="gh">時</span> 붉은 실이 당겨지는 해</h3>
-        {fy.length > 0 && (
-          <p className="fate-year">가장 가까운 인연의 해 — <span className="yr">{fy[0]}년</span></p>
+        <h3><span className="gh">運</span> 대운이 바뀌는 해</h3>
+        {nd && (
+          <p className="fate-year">그대의 다음 대운 — <span className="yr">{nd.startYear}년</span> 시작</p>
         )}
         <p className="blur-tx" aria-hidden="true">
-          그 해에 인연이 들어오는 경로와 계절, 그대가 반드시 준비해 두어야 할 것 한 가지.
-          {z.marriageDaehan ? " 그리고 그대의 대한(大限)이 부처궁 자리에 드는 10년의 창이 언제 열리는지." : ""} 그 창을 놓치면 다음 실이 당겨지는 해는{fy[1] ? "..." : " 한참을 기다려야 하니..."}
+          그 10년의 주제가 무엇인지, 황금기인지 시련기인지, 그 전환기 1~2년을 어떻게 건너야 하는지 — 대한(大限) 연대표는 정식 감정서의 運 편에서 연도별로 다룹니다.
         </p>
         <div className="lockline">🔒 정식 감정서에서 개봉</div>
       </div>
 
-      {/* 피해야 할 상대 */}
+      {/* 재물 */}
       <div className="gcard">
-        <h3><span className="gh">選</span> 그대가 피해야 할 상대</h3>
+        <h3><span className="gh">財</span> 재물운 — 재백궁의 별</h3>
+        <p className="open-tx">그대의 재백궁(財帛宮)에는 <b>{jaebaek.map((s) => s + "성").join("·") || "빌려 쓰는 별"}</b>이 앉아 있습니다.</p>
         <p className="blur-tx" aria-hidden="true">
-          그대의 명궁 구조상 본능적으로 끌리지만 반복되면 소모되는 유형이 뚜렷하게 하나 있습니다.
-          {giStar ? ` 그리고 그대의 명반에는 화기(化忌)가 붙은 별이 하나 있어 — 그 별이 관계에서 만드는 함정은...` : " 그 사람의 첫인상은 오히려..."}
+          이 별이 말하는 돈 버는 방식과 그릇, 돈이 새는 전형적인 경로, 그리고 화록·화기가 재물 라인에 걸렸는지 — 재물이 들어오는 길과 새는 길은 정식 감정서에서 낱낱이 다룹니다.
+        </p>
+        <div className="lockline">🔒 정식 감정서에서 개봉</div>
+      </div>
+
+      {/* 애정 */}
+      <div className="gcard">
+        <h3><span className="gh">愛</span> 애정운 — 부처궁의 별</h3>
+        <p className="open-tx">{firstSentence(spouseText)}</p>
+        <p className="blur-tx" aria-hidden="true">
+          {spouseText.slice(firstSentence(spouseText).length)} 이 인연을 만나는 시기와 조심할 함정까지.
+        </p>
+        <div className="lockline">🔒 정식 감정서에서 개봉</div>
+      </div>
+
+      {/* 화기 */}
+      <div className="gcard">
+        <h3><span className="gh">忌</span> 그대의 운을 흔드는 별</h3>
+        <p className="blur-tx" aria-hidden="true">
+          {giStar ? "그대의 명반에는 화기(化忌)가 붙은 별이 하나 있습니다. 그 별이 어느 궁에 앉아 어떤 영역을 흔드는지, 발동을 다루는 법은..." : "명반에서 기운이 꺾이는 자리가 어디인지, 그 자리를 다루는 법은..."}
         </p>
         <div className="lockline">🔒 정식 감정서에서 개봉</div>
       </div>
@@ -550,11 +652,14 @@ function OfferBar({ onPay }) {
   );
 }
 
-// ---------------- 4. 결제 + 紅線 매칭 ----------------
+// ---------------- 4. 결제 (3단 패키지) + 紅線 ----------------
 function Payment({ leadId, leadToken, birthYear, onBack }) {
-  const price = CONFIG.PRICE, orig = CONFIG.PRICE_ORIGINAL;
-  const discount = orig - price;
-  const pct = Math.round((discount / orig) * 100);
+  const [prodIdx, setProdIdx] = useState(1); // 기본 [인기]
+  const [coupon, setCoupon] = useState("");
+  const [couponApplied, setCouponApplied] = useState(0);
+  const [couponMsg, setCouponMsg] = useState("");
+  const [paidClicked, setPaidClicked] = useState(false);
+  const [copied, setCopied] = useState("");
   const [intro, setIntro] = useState("");
   const [avatar, setAvatar] = useState(null);
   const [job, setJob] = useState("");
@@ -563,11 +668,40 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
   const [matchDone, setMatchDone] = useState(false);
   useEffect(() => { ev("pay_view"); }, []);
 
-  const toggleInt = (t) =>
-    setInts((xs) => (xs.includes(t) ? xs.filter((x) => x !== t) : xs.length < 5 ? [...xs, t] : xs));
+  const P = PRODUCTS[prodIdx];
+  const price = Math.max(0, P.price - couponApplied);
+  const discount = P.original - P.price;
+  const pct = Math.round((discount / P.original) * 100);
+  const payUrl = P.url || CONFIG.PAYMENT_URL;
 
+  const age = birthYear ? new Date().getFullYear() - birthYear : null;
+  const adult = age == null || age >= 19;
+  const orderCode = leadToken ? leadToken.slice(0, 6).toUpperCase() : null;
+
+  const selectProduct = (i) => {
+    setProdIdx(i);
+    ev("product_select", { tier: PRODUCTS[i].id });
+    if (leadId) {
+      try {
+        fetch("/api/lead", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: leadId, quizHits: PRODUCTS[i].id }) });
+      } catch (e) {}
+    }
+  };
+
+  const applyCoupon = () => {
+    const code = coupon.trim().toUpperCase();
+    const amount = CONFIG.COUPONS[code];
+    if (amount) { setCouponApplied(amount); setCouponMsg(`쿠폰 적용 — ${amount.toLocaleString("ko-KR")}원 차감`); ev("coupon_ok"); }
+    else { setCouponApplied(0); setCouponMsg("유효하지 않은 코드일세."); }
+  };
+
+  const copyText = (text, label) => {
+    try { navigator.clipboard.writeText(text); setCopied(label); setTimeout(() => setCopied(""), 2000); } catch (e) {}
+  };
+  const kakaoMsg = `${P.name} 결제 완료했습니다.${orderCode ? ` 주문코드 ${orderCode}` : ""}`;
+
+  const toggleInt = (t) => setInts((xs) => (xs.includes(t) ? xs.filter((x) => x !== t) : xs.length < 5 ? [...xs, t] : xs));
   const canApply = avatar && intro.trim().length >= 10;
-
   const applyMatch = async () => {
     if (!canApply) return;
     ev("match_apply");
@@ -586,33 +720,48 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
     setMatchDone(true);
   };
 
-  const age = birthYear ? new Date().getFullYear() - birthYear : null;
-  const adult = age == null || age >= 19;
-  const orderCode = leadToken ? leadToken.slice(0, 6).toUpperCase() : null;
-  const [paidClicked, setPaidClicked] = useState(false);
-  const [copied, setCopied] = useState("");
-
-  const copyText = (text, label) => {
-    try { navigator.clipboard.writeText(text); setCopied(label); setTimeout(() => setCopied(""), 2000); } catch (e) {}
-  };
-  const kakaoMsg = orderCode ? `인연 감정서 결제 완료했습니다. 주문코드 ${orderCode}` : "인연 감정서 결제 완료했습니다.";
-
   return (
     <section className="pay">
       <div className="stars" />
       {onBack && <button className="back-btn" style={{ position: "relative", marginBottom: 6 }} onClick={onBack} aria-label="감정 결과로">‹ 감정 결과로</button>}
+
       <div className="paycard">
-        <div className="ph"><span className="eyebrow">{CONFIG.BRAND_HANJA}</span><b>운명의 짝 정밀 감정서</b></div>
-        <div className="plist">
-          {REPORT_ITEMS.map((it) => <p key={it.label}><span className="h">{it.hanja}</span>{it.label}</p>)}
+        <div className="ph"><span className="eyebrow">{CONFIG.BRAND_HANJA}</span><b>자미두수 정밀 감정서</b></div>
+
+        {/* 상품 3단 */}
+        <div className="prod-list">
+          {PRODUCTS.map((p, i) => (
+            <button key={p.id} className={"prod" + (prodIdx === i ? " on" : "")} onClick={() => selectProduct(i)}>
+              {p.hot && <span className="prod-hot">인기</span>}
+              <span className="prod-name">{p.name}</span>
+              <span className="prod-desc">{p.desc}</span>
+              <span className="prod-price">
+                <s>{p.original.toLocaleString("ko-KR")}원</s>
+                <b className="prod-pct">-{Math.round(((p.original - p.price) / p.original) * 100)}%</b>
+                <b>{p.price.toLocaleString("ko-KR")}원</b>
+              </span>
+              <span className="prod-items">{p.items.join(" · ")}</span>
+            </button>
+          ))}
         </div>
+
+        {/* 쿠폰 */}
+        <div className="coupon-row">
+          <input placeholder="쿠폰 · 추천 코드 입력" value={coupon} onChange={(e) => setCoupon(e.target.value)} />
+          <button onClick={applyCoupon}>적용</button>
+        </div>
+        {couponMsg && <p className="coupon-msg">{couponMsg}</p>}
+
+        {/* 가격 스택 */}
         <div className="prices">
-          <div className="pr"><span>{CONFIG.BRAND} 정밀 감정서</span><span className="strike">{orig.toLocaleString("ko-KR")}원</span></div>
+          <div className="pr"><span>{P.name}</span><span className="strike">{P.original.toLocaleString("ko-KR")}원</span></div>
           <p style={{ fontSize: 10.5, color: "var(--tx-dim)", padding: "0 2px" }} className="mono">표시 가격은 오픈 기념 프로모션가입니다</p>
           <div className="pr red"><span>지금 결제 시 할인</span><span>-{discount.toLocaleString("ko-KR")}원</span></div>
+          {couponApplied > 0 && <div className="pr red"><span>쿠폰 할인</span><span>-{couponApplied.toLocaleString("ko-KR")}원</span></div>}
           <div className="pr final"><span>최종 결제금액</span><span><span className="pct">-{pct}%</span>{price.toLocaleString("ko-KR")}원</span></div>
         </div>
-        <a className="paybtn" href={CONFIG.PAYMENT_URL} target="_blank" rel="noopener noreferrer" onClick={() => { ev("pay_click"); setPaidClicked(true); }}>
+
+        <a className="paybtn" href={payUrl} target="_blank" rel="noopener noreferrer" onClick={() => { ev("pay_click", { tier: P.id }); setPaidClicked(true); }}>
           결제하기
         </a>
 
@@ -630,6 +779,7 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
             <div className="ap-step"><span>③</span> 24시간 내 전용 감정서 링크가 도착하네</div>
           </div>
         )}
+
         {!paidClicked && (
           <>
             <p className="delivery">
@@ -641,16 +791,18 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
             </a>
           </>
         )}
+
         <div className="trust">
           {TRUST.map((t) => <p key={t}>✓ {t}</p>)}
           <p>✓ 수신 후 24시간 내 요청 시 전액 환불</p>
         </div>
       </div>
 
+      {/* 紅線 매칭 */}
       <div className="match">
         <h3><span className="h">紅線</span> {MATCHING.TITLE.replace("紅線 ", "")}</h3>
         {!adult && (
-          <p className="mf-label" style={{ marginTop: 8 }}>紅線 매칭은 만 19세 이상만 신청할 수 있네. 연이 급할수록 때를 기다리는 법일세.</p>
+          <p className="mf-label" style={{ marginTop: 8 }}>紅線 매칭은 만 19세 이상만 신청할 수 있네.</p>
         )}
         <p className="desc">{MATCHING.DESC}</p>
         <ul>{MATCHING.POINTS.map((p) => <li key={p}>{p}</li>)}</ul>

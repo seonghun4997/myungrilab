@@ -8,7 +8,7 @@ import { computeZiwei, JI, STAR_HANJA } from "../lib/ziwei";
 import {
   CONFIG, ELDER, OFFER, TRUST, REPORT_ITEMS, MATCHING, TIME_SLOTS,
   STAR_SELF, STAR_SPOUSE, STAR_TAG, EMPTY_SPOUSE, SOCIAL_PROOF,
-  AVATARS, AVATAR_META, INTERESTS, MATCH_UI, LANDING, PRODUCTS, REVIEWS,
+  AVATARS, AVATAR_META, INTERESTS, MATCH_UI, LANDING, PRODUCTS, REVIEWS, BANK, LEGAL,
 } from "../lib/content";
 import { track } from "@vercel/analytics";
 import ReadingShow from "./ReadingShow";
@@ -195,8 +195,9 @@ function SiteFooter() {
   return (
     <footer style={{ position: "relative", zIndex: 2 }}>
       <p>
-        {CONFIG.BRAND}({CONFIG.BRAND_HANJA}) · 문의: <a href={CONFIG.KAKAO_CHANNEL_URL} target="_blank" rel="noopener noreferrer" style={{ color: "var(--tx-dim)" }}>카카오톡 채널</a> · <a href="/privacy" style={{ color: "var(--tx-dim)" }}>개인정보처리방침</a>
-        {CONFIG.BUSINESS_INFO && <><br />{CONFIG.BUSINESS_INFO}</>}
+        {CONFIG.BRAND}({CONFIG.BRAND_HANJA}) · 문의: 안내 문자 회신 · <a href="/privacy" style={{ color: "var(--tx-dim)" }}>개인정보처리방침</a>
+        {LEGAL.LINES.filter((l) => !l.includes("REPLACE")).map((l) => <span key={l}><br />{l}</span>)}
+        <br />{LEGAL.REFUND}
       </p>
     </footer>
   );
@@ -890,42 +891,41 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
             {claiming ? "월하노인이 명반을 읽는 중… (30초~1분)" : "0원 — 감정서 바로 받기"}
           </button>
         ) : (
-        <a
+        <button
           className="paybtn"
-          href={payUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => {
-            ev("pay_click", { tier: P.id });
-            setPaidClicked(true);
-            if (payUrl.includes("REPLACE")) e.preventDefault(); // 결제링크 미설정 시 테스트 모드
-          }}
+          style={{ border: "none", cursor: "pointer" }}
+          onClick={() => { ev("pay_click", { tier: P.id }); setPaidClicked(true); }}
         >
-          결제하기
-        </a>
+          무통장입금으로 결제하기
+        </button>
         )}
         {claiming && <ReadingShow />}
         {claimErr && (
           <p className="mono" style={{ fontSize: 10.5, color: "#ff8b98", textAlign: "center", marginTop: 8 }}>{claimErr}</p>
         )}
-        {payUrl.includes("REPLACE") && paidClicked && (
-          <p className="mono" style={{ fontSize: 10.5, color: "var(--gold)", textAlign: "center", marginTop: 8 }}>
-            [테스트 모드] 결제 링크 미설정 — content.js에 링크를 넣으면 실제 결제 페이지로 이동합니다
-          </p>
-        )}
 
         {paidClicked && (
           <div className="after-pay">
-            <p className="ap-t">결제를 마치셨다면 — 감정서 받는 길</p>
-            <div className="ap-step"><span>①</span> 아래 안내문을 복사하고</div>
-            <button className="ap-copy" onClick={() => copyText(kakaoMsg, "안내문")}>
-              “{kakaoMsg}” {copied === "안내문" ? "✓ 복사됨" : "— 눌러서 복사"}
+            <p className="ap-t">무통장입금 안내</p>
+            <div className="ap-step"><span>①</span> 아래 계좌로 {price.toLocaleString("ko-KR")}원을 입금해주시게</div>
+            <button className="ap-copy" onClick={() => copyText(`${BANK.NAME} ${BANK.ACCOUNT}`, "계좌")}>
+              {BANK.NAME} {BANK.ACCOUNT} (예금주 {BANK.HOLDER}) {copied === "계좌" ? "✓ 복사됨" : "— 눌러서 복사"}
             </button>
-            <div className="ap-step"><span>②</span> 카카오톡 채널을 추가해 붙여넣으시게</div>
-            <a className="kakao" style={{ marginTop: 6 }} href={CONFIG.KAKAO_CHANNEL_URL} target="_blank" rel="noopener noreferrer" onClick={() => ev("kakao_click")}>
-              카카오톡 채널 열기
-            </a>
-            <div className="ap-step"><span>③</span> 24시간 내 전용 감정서 링크가 도착하네</div>
+            <div className="ap-step"><span>②</span> 입금자명은 문답에 적으신 성함으로</div>
+            {orderCode && (
+              <p className="mono" style={{ fontSize: 11.5, color: "var(--tx-dim)", margin: "4px 0 8px" }}>
+                이체 메모에 주문코드 <button className="code-chip" onClick={() => copyText(orderCode, "주문코드")}>{orderCode} {copied === "주문코드" ? "✓" : "⧉"}</button> 를 남기면 더 빨라지네.
+              </p>
+            )}
+            {!BANK.TOSS_URL.includes("REPLACE") && (
+              <a className="ap-copy" style={{ textDecoration: "none", textAlign: "center", background: "rgba(49,130,246,.18)", borderColor: "rgba(49,130,246,.5)" }} href={BANK.TOSS_URL} target="_blank" rel="noopener noreferrer" onClick={() => ev("toss_click")}>
+                토스로 3초 송금 →
+              </a>
+            )}
+            <div className="ap-step"><span>③</span> 입금 확인 후, 남기신 번호로 감정서 링크를 문자로 보내드리네 (영업시간 기준 1시간 이내)</div>
+            <p className="mono" style={{ fontSize: 10, color: "var(--tx-dim)", marginTop: 8, lineHeight: 1.7 }}>
+              {LEGAL.REFUND}<br />링크 문자를 잃어버리면 그 문자에 회신 — 다시 보내드리네.
+            </p>
           </div>
         )}
 
@@ -935,9 +935,9 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
               {CONFIG.DELIVERY_NOTE}
               {orderCode && <><br />내 주문코드: <button className="code-chip" onClick={() => copyText(orderCode, "주문코드")}>{orderCode} {copied === "주문코드" ? "✓" : "⧉"}</button></>}
             </p>
-            <a className="kakao" href={CONFIG.KAKAO_CHANNEL_URL} target="_blank" rel="noopener noreferrer" onClick={() => ev("kakao_click")}>
-              카카오톡 채널 추가하기
-            </a>
+            <p className="mono" style={{ fontSize: 11, color: "var(--tx-dim)", textAlign: "center" }}>
+              입금이 확인되면 문답에 남기신 번호로 감정서 링크를 문자로 보내드리네.
+            </p>
           </>
         )}
 
@@ -956,46 +956,17 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
         <p className="desc">{MATCHING.DESC}</p>
         <ul>{MATCHING.POINTS.map((p) => <li key={p}>{p}</li>)}</ul>
 
-        {adult && !matchDone ? (
-          <div className="mform">
-            <p className="mf-label">{MATCH_UI.FORM_NOTE}</p>
-            <p className="mf-t">가면(아바타)을 고르시게</p>
-            <div className="avatar-grid">
-              {AVATARS.map((a) => (
-                <button key={a} className={"av" + (avatar === a ? " on" : "")} onClick={() => setAvatar(a)} aria-label={AVATAR_META[a]?.name || a}
-                  style={AVATAR_META[a] ? { background: AVATAR_META[a].bg, borderRadius: "50%" } : undefined}>
-                  {AVATAR_META[a] ? <img src={AVATAR_META[a].img} alt="" style={{ width: "72%", verticalAlign: "middle" }} onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(a)); }} /> : a}
-                </button>
-              ))}
-            </div>
-            <div className="mf-row">
-              <input placeholder="직업 (예: 대학생, 간호사)" value={job} onChange={(e) => setJob(e.target.value)} />
-              <input placeholder="지역 (예: 서울 마포)" value={region} onChange={(e) => setRegion(e.target.value)} />
-            </div>
-            <p className="mf-t">관심사 (최대 5개)</p>
-            <div className="int-grid">
-              {INTERESTS.map((t) => (
-                <button key={t} className={"chip" + (ints.includes(t) ? " on" : "")} onClick={() => toggleInt(t)}>{t}</button>
-              ))}
-            </div>
-            <textarea className="ta" placeholder="나를 소개하는 세 문장 (익명 · 10자 이상)" value={intro} onChange={(e) => setIntro(e.target.value)} />
-            <button className="mbtn" disabled={!canApply} onClick={applyMatch}>{MATCHING.CTA}</button>
+        {adult && leadToken ? (
+          <div className="mdone-box">
+            <a className="mbox-link" href={`/m/${leadToken}`}>
+              내 인연함 열어보기 →
+              <small>연이 도착하면 이 곳에 카드가 옵니다. 링크를 저장해두시게.</small>
+            </a>
           </div>
         ) : adult ? (
-          <div className="mdone-box">
-            <p className="mdone">{MATCHING.DONE}</p>
-            {leadToken && (
-              <>
-                <a className="mbox-link" href={`/m/${leadToken}`}>
-                  내 인연함 열어보기 →
-                  <small>연이 도착하면 이 곳에 카드가 옵니다. 링크를 저장해두시게.</small>
-                </a>
-                <p className="mf-label" style={{ marginTop: 10, textAlign: "center" }}>
-                  링크를 잃어버리면 카카오톡 채널에 “인연함”이라고 보내주시게 — 다시 찾아줌세.
-                </p>
-              </>
-            )}
-          </div>
+          <p className="mf-label" style={{ textAlign: "center", marginTop: 12 }}>
+            감정서를 받으신 분께는 감정서의 마지막 장에서 인연함이 열립니다.
+          </p>
         ) : null}
       </div>
 

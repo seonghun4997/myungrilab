@@ -10,6 +10,7 @@ import MatchCta from "./MatchCta";
 import RateWidget from "./RateWidget";
 import { Bars, Gauge, VsBar, FlowChart, PastTimeline, RarityCard, PersonCard, MonthsCard, CautionList, MyeongbanGrid } from "./widgets";
 import { HeroArt, ChapterArt } from "./art";
+import ShareCard from "./ShareCard";
 
 function renderText(text) {
   return text.split(/\n{2,}/).map((para, i) => (
@@ -237,6 +238,12 @@ export default function ReportPager({ name, birth, token, chapters, scores, z })
             열두 개의 방마다 별이 앉아 {name}님의 성정과 흐름을 말하고 있으니, 달 아래에서 하나씩 짚어드릴게요.
           </p>
           <MyeongbanGrid palaces={z.palaces} name={name} bureau={z.bureauName} sahwa={z.sahwa} sinPos={z.sin} />
+          <ShareCard
+            name={name}
+            myeongStars={(z.palaces.find((pl) => pl.name === "명궁")?.majors || []).join("·")}
+            bureau={z.bureauName}
+            rarityPct={scores?.희소도?.pct ?? 10}
+          />
         </div>
       )}
 

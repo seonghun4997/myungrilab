@@ -5,7 +5,7 @@
 // ============================================================
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
-import { CONFIG, MATCH_CONFIG, AVATARS, AVATAR_META, INTERESTS } from "../../../lib/content";
+import { CONFIG, MATCH_CONFIG, BANK, LEGAL, AVATARS, AVATAR_META, INTERESTS } from "../../../lib/content";
 import { ev } from "../../../lib/track";
 
 // 3D 아바타 (이미지 실패 시 이모지 폴백이 뒤에 깔려 있음)
@@ -92,6 +92,9 @@ export default function MatchBox() {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [kakao, setKakao] = useState("");
+  const [payOpen, setPayOpen] = useState(false);
+  const [copied, setCopied] = useState("");
+  const copy = async (t, label) => { try { await navigator.clipboard.writeText(t); setCopied(label); setTimeout(() => setCopied(""), 1600); } catch (e) {} };
   const [opened, setOpened] = useState({});
   // 온보딩
   const [step, setStep] = useState(0);
@@ -199,6 +202,19 @@ export default function MatchBox() {
     );
   }
 
+  // ───────── 만 19세 미만 ─────────
+  if (data.notAdult) {
+    return (
+      <main className="hx"><style>{css}</style>
+        <div className="hx-in" style={{ paddingTop: 90, textAlign: "center" }}>
+          <div className="hx-h1">紅線 매칭은 만 19세부터예요</div>
+          <p className="hx-dim" style={{ marginTop: 8 }}>감정서는 그대로 보실 수 있어요.<br />성인이 되는 해에 월하노인이 기다리고 있을게요.</p>
+          {data.hasReport && <a className="hx-btn" style={{ marginTop: 20, maxWidth: 240, marginLeft: "auto", marginRight: "auto" }} href={`/r/${token}`}>내 감정서 보기</a>}
+        </div>
+      </main>
+    );
+  }
+
   // ───────── 프로필 온보딩 (3단계) ─────────
   if (!data.hasProfile || step > 0) {
     const s = step || 1;
@@ -276,6 +292,9 @@ export default function MatchBox() {
         <div style={{ marginTop: -6 }}>
           <span className="hx-badge">궁합 {c.score || 76}점{c.pct ? ` · 상위 ${c.pct}%` : ""}</span>
         </div>
+        {c.pct && (
+          <p className="hx-dim" style={{ marginTop: 8 }}>월하노인이 100쌍의 명반을 이으면, 위에서 {c.pct}번째 안에 드는 배치예요<br /><span style={{ fontSize: 10.5 }}>(자미두수 배치 기준 자체 산정)</span></p>
+        )}
         <div className="hx-h1" style={{ marginTop: 12 }}>
           {c.other.age ? `${c.other.age}살` : "나이 비공개"}{c.other.job ? ` · ${c.other.job}` : ""}
         </div>
@@ -286,11 +305,19 @@ export default function MatchBox() {
           </div>
         )}
       </div>
+      {c.persona && (
+        <div style={{ background: "#f3f1fb", borderRadius: 14, padding: "11px 13px", marginTop: 12 }}>
+          <p style={{ fontSize: 11.5, color: "#6c4dff", fontWeight: 700, marginBottom: 4 }}>월하노인이 본 이 사람</p>
+          <p style={{ fontSize: 13, color: "#544d7d", lineHeight: 1.7 }}>{c.persona.look}이에요. {c.persona.love}이고요.</p>
+        </div>
+      )}
       {c.other.intro && <p className="hx-quote">“{c.other.intro}”</p>}
-      {c.note && (
+      {(c.detail?.length || c.note) && (
         <div className="hx-note">
           <div className="t">月下老人의 궁합 풀이</div>
-          <p>{c.note}</p>
+          {(c.detail?.length ? c.detail : [c.note]).map((t, i) => (
+            <p key={i} style={{ marginTop: i ? 9 : 0 }}>{t}</p>
+          ))}
         </div>
       )}
       {onAccept && (
@@ -300,7 +327,7 @@ export default function MatchBox() {
         </div>
       )}
       {onAccept && (
-        <p className="hx-dim" style={{ textAlign: "center", marginTop: 10 }}>수락해도 상대에게 바로 알려지지 않아요</p>
+        <p className="hx-dim" style={{ textAlign: "center", marginTop: 10 }}>수락해도 상대에게 바로 알려지지 않아요{MATCH_CONFIG.FREE_BETA ? " · 오픈 기념 성사비 0원" : ` · 성사 시에만 성사비 ${MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원`}</p>
       )}
     </div>
   );
@@ -321,6 +348,12 @@ export default function MatchBox() {
         <p className="hx-dim" style={{ marginTop: 3 }}>두 분 모두 인연을 수락했습니다</p>
       </div>
 
+      {c.freeBeta && !c.otherKakao && (
+        <div style={{ background: "#e9f6ec", borderRadius: 14, padding: "10px 13px", marginTop: 12, textAlign: "center" }}>
+          <p style={{ fontSize: 12.5, color: "#1d6e4d", fontWeight: 700 }}>오픈 기념 — 성사비 0원</p>
+          <p className="hx-dim" style={{ marginTop: 3 }}>아래에 내 카카오톡 아이디만 등록하면, 서로 등록되는 즉시 교환돼요</p>
+        </div>
+      )}
       {c.otherKakao ? (
         <div style={{ background: "#f3f1fb", borderRadius: 16, padding: 16, marginTop: 14, textAlign: "center" }}>
           <p className="hx-dim">상대의 카카오톡 아이디</p>
@@ -329,15 +362,35 @@ export default function MatchBox() {
         </div>
       ) : (
         <>
+          {!c.freeBeta && (
           <div style={{ background: "#f6f6fb", borderRadius: 16, padding: "10px 15px", marginTop: 14 }}>
             <div className="hx-pay"><span>성사비 (1인)</span><b>{MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원</b></div>
             <div className="hx-pay" style={{ borderTop: "1px solid #efedf8" }}><span>나의 결제</span><b style={{ color: c.myPaid ? "#1d9e75" : "#9a95b8" }}>{c.myPaid ? "확인됨" : "대기"}</b></div>
             <div className="hx-pay" style={{ borderTop: "1px solid #efedf8" }}><span>상대의 결제</span><b style={{ color: c.otherPaid ? "#1d9e75" : "#9a95b8" }}>{c.otherPaid ? "확인됨" : "대기"}</b></div>
           </div>
-          {!c.myPaid && (
-            <a className="hx-btn" style={{ marginTop: 12 }} href={MATCH_CONFIG.PAYMENT_URL} target="_blank" rel="noopener noreferrer" onClick={() => ev("match_fee_click")}>
-              성사비 결제하기
-            </a>
+          )}
+          {!c.freeBeta && !c.myPaid && !payOpen && (
+            <button className="hx-btn" style={{ marginTop: 12 }} onClick={() => { ev("match_fee_click"); setPayOpen(true); }}>
+              무통장입금으로 성사비 결제하기
+            </button>
+          )}
+          {!c.freeBeta && !c.myPaid && payOpen && (
+            <div style={{ background: "#f3f1fb", borderRadius: 16, padding: "13px 14px", marginTop: 12 }}>
+              <p style={{ fontSize: 12, color: "#6c4dff", fontWeight: 700, marginBottom: 8 }}>입금 계좌</p>
+              <p style={{ fontSize: 15, fontWeight: 700 }}>{BANK.NAME} {BANK.ACCOUNT}</p>
+              <p className="hx-dim" style={{ marginTop: 2 }}>예금주 {BANK.HOLDER} · {MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원</p>
+              <button className="hx-btn ghost" style={{ marginTop: 10, padding: "10px", fontSize: 13 }} onClick={() => copy(`${BANK.NAME} ${BANK.ACCOUNT}`, "acc")}>
+                {copied === "acc" ? "복사되었어요" : "계좌번호 복사"}
+              </button>
+              {!BANK.TOSS_URL.includes("REPLACE") && (
+                <a className="hx-btn" style={{ marginTop: 8, padding: "10px", fontSize: 13, background: "#3182f6" }} href={BANK.TOSS_URL} target="_blank" rel="noopener noreferrer">토스로 3초 송금</a>
+              )}
+              <p className="hx-dim" style={{ marginTop: 10, fontSize: 10.5, lineHeight: 1.6 }}>{LEGAL.REFUND}</p>
+              <p className="hx-dim" style={{ marginTop: 10, lineHeight: 1.7 }}>
+                입금자명은 <b style={{ color: "#1c1633" }}>문답에 적으신 성함</b>으로 보내주세요.<br />
+                입금이 확인되면 위 표가 '확인됨'으로 바뀌고, 문자로도 알려드려요.
+              </p>
+            </div>
           )}
           {!c.myKakaoSet ? (
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -345,7 +398,7 @@ export default function MatchBox() {
               <button className="hx-btn" style={{ width: 84 }} disabled={busy || !kakao.trim()} onClick={() => saveKakao(c.id)}>등록</button>
             </div>
           ) : (
-            <p className="hx-dim" style={{ textAlign: "center", marginTop: 12 }}>내 카카오톡 아이디 등록 완료 — 두 분의 결제가 확인되면 서로에게 공개돼요</p>
+            <p className="hx-dim" style={{ textAlign: "center", marginTop: 12 }}>내 카카오톡 아이디 등록 완료 — {c.freeBeta ? "상대도 등록하면 바로" : "두 분의 결제가 확인되면"} 서로에게 공개돼요</p>
           )}
         </>
       )}
@@ -373,6 +426,7 @@ export default function MatchBox() {
               <div className="hx-h1">오늘의 인연 카드가 도착했어요</div>
               <p className="hx-dim" style={{ marginTop: 4 }}>어떤 인연이 {data.name} 님을 기다리고 있을까요?</p>
               <button className="hx-btn" style={{ marginTop: 16 }} onClick={() => { ev("match_card_open"); setOpened((o) => ({ ...o, [hero.id]: true })); }}>카드 열어보기</button>
+              <p className="hx-dim" style={{ marginTop: 10, fontSize: 11 }}>{MATCH_CONFIG.FREE_BETA ? "오픈 기념 — 성사되어도 성사비 0원" : `카드 열람·수락은 무료 · 성사 시에만 성사비 ${MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원`}</p>
             </div>
           ) : (
             <OpenCard c={hero} onAccept={() => respond(hero.id, true)} onDecline={() => respond(hero.id, false)} />
@@ -385,6 +439,7 @@ export default function MatchBox() {
               <div className="hx-h1">월하노인이 인연을 찾았어요</div>
               <p className="hx-dim" style={{ marginTop: 4 }}>{data.name} 님의 명반과 궁합이 가장 좋은 분이에요</p>
               <button className="hx-btn" style={{ marginTop: 16 }} onClick={() => { ev("match_card_open"); setOpened((o) => ({ ...o, cand: true })); }}>카드 열어보기</button>
+              <p className="hx-dim" style={{ marginTop: 10, fontSize: 11 }}>{MATCH_CONFIG.FREE_BETA ? "오픈 기념 — 성사되어도 성사비 0원" : `카드 열람·수락은 무료 · 성사 시에만 성사비 ${MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원`}</p>
             </div>
           ) : (
             <OpenCard c={{ ...cand, id: "cand" }} onAccept={() => propose(cand.candidateId)} onDecline={() => skip(cand.candidateId)} />
@@ -392,8 +447,10 @@ export default function MatchBox() {
         ) : (
           <div className="hx-card" style={{ textAlign: "center" }}>
             <div style={{ display: "flex", justifyContent: "center", margin: "6px 0 12px" }}><CardBack w={92} h={126} /></div>
-            <div className="hx-h1">월하노인이 실을 고르고 있어요</div>
-            <p className="hx-dim" style={{ marginTop: 4 }}>{data.name} 님의 명반과 닿는 인연이 나타나면<br />카카오톡으로 알려드릴게요</p>
+            <div className="hx-h1">{data.dailyDone ? "오늘의 인연은 여기까지예요" : "월하노인이 실을 고르고 있어요"}</div>
+            <p className="hx-dim" style={{ marginTop: 4 }}>
+              {data.dailyDone ? <>인연 카드는 하루에 한 장 — 내일 새 카드가 도착해요</> : <>{data.name} 님의 명반과 닿는 인연이 나타나면<br />문자로 알려드릴게요</>}
+            </p>
           </div>
         )}
 
@@ -419,7 +476,7 @@ export default function MatchBox() {
                         <AvatarCircle emoji={c.other.avatar} size={40} />
                         <div>
                           <span className="hx-state" style={{ background: "#fff4d6", color: "#854f0b" }}>상대의 마음을 기다리는 중</span>
-                          <p className="hx-dim" style={{ marginTop: 5 }}>월하노인이 상대의 마음을 물으러 갔어요<br />결과가 정해지면 카카오톡으로 알려드려요</p>
+                          <p className="hx-dim" style={{ marginTop: 5 }}>월하노인이 상대의 마음을 물으러 갔어요<br />결과는 매일 밤 11시에 열리고, 문자로도 알려드려요</p>
                         </div>
                       </div>
                     </div>
@@ -436,7 +493,7 @@ export default function MatchBox() {
           </>
         )}
 
-        <p className="hx-dim" style={{ textAlign: "center", marginTop: 34 }}>문의는 카카오톡 채널로 · © {new Date().getFullYear()} {CONFIG.BRAND}</p>
+        <p className="hx-dim" style={{ textAlign: "center", marginTop: 34 }}>링크를 잃어버렸다면 안내 문자에 회신 — 다시 보내드려요<br />궁금한 점도 문자로 답해드려요 · © {new Date().getFullYear()} {CONFIG.BRAND}</p>
       </div>
     </main>
   );

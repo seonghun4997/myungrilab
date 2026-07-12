@@ -6,7 +6,17 @@
 // POST { token, action:"profile", profile, intro } : 매칭 프로필 저장
 // ============================================================
 import { sb } from "../../../lib/supabase";
-import { gonghap, displayScore, gradePct } from "../../../lib/gonghap";
+import { gonghap, gonghapDetail, displayScore, gradePct } from "../../../lib/gonghap";
+import { MATCH_CONFIG } from "../../../lib/content";
+
+// 만 19세 이상만 매칭 가능
+function isAdult(b) {
+  if (!b?.y) return false;
+  const t = new Date();
+  let age = t.getFullYear() - b.y;
+  if (t.getMonth() + 1 < (b.m || 1) || (t.getMonth() + 1 === (b.m || 1) && t.getDate() < (b.d || 1))) age--;
+  return age >= 19;
+}
 import KLCmod from "korean-lunar-calendar";
 
 async function findLead(client, token) {
@@ -28,6 +38,8 @@ function blind(lead) {
   };
 }
 
+const todayKST = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+
 function toLunar(b) {
   const KLC = KLCmod.default || KLCmod;
   const c = new KLC();
@@ -41,7 +53,8 @@ function safeGonghap(bA, bB) {
     const lA = toLunar(bA), lB = toLunar(bB);
     if (!lA || !lB) return null;
     const g = gonghap(bA, bB, lA, lB);
-    return { note: g.note, grade: g.grade, score: displayScore(g), pct: gradePct(g.grade) };
+    const d = gonghapDetail(g);
+    return { note: g.note, grade: g.grade, score: displayScore(g), pct: gradePct(g.grade), detail: d.paras, persona: d.persona };
   } catch (e) { return null; }
 }
 
@@ -51,6 +64,7 @@ export async function GET(req) {
   const token = new URL(req.url).searchParams.get("token");
   const me = await findLead(client, token);
   if (!me) return Response.json({ error: "인연함을 찾을 수 없습니다." }, { status: 404 });
+  if (!isAdult(me.birth)) return Response.json({ name: me.name, notAdult: true, cards: [], hasProfile: false, hasReport: !!me.report, monthMatched: 0 });
 
   const { data: rows, error } = await client
     .from("matches")
@@ -81,7 +95,8 @@ export async function GET(req) {
       myAccept, otherAccept, matched,
       myPaid, otherPaid,
       myKakaoSet: !!(iAmA ? m.kakao_a : m.kakao_b),
-      otherKakao: matched && myPaid && otherPaid ? (iAmA ? m.kakao_b : m.kakao_a) : null,
+      freeBeta: !!MATCH_CONFIG.FREE_BETA,
+      otherKakao: matched && (MATCH_CONFIG.FREE_BETA || (myPaid && otherPaid)) ? (iAmA ? m.kakao_b : m.kakao_a) : null,
     });
   }
 
@@ -97,9 +112,10 @@ export async function GET(req) {
     monthMatched = count || 0;
   } catch (e) {}
 
-  // ── 자동 추천: 명반 궁합이 가장 좋은 후보 1명 ──
+  // ── 자동 추천: 명반 궁합이 가장 좋은 후보 1명 (하루 1장) ──
   let candidate = null;
-  if (me.profile?.avatar && me.birth?.y) {
+  const dailyDone = me.profile?.lastCard === todayKST();
+  if (me.profile?.avatar && me.birth?.y && !dailyDone) {
     try {
       const excluded = new Set([me.id, ...(rows || []).map((m) => (m.lead_a === me.id ? m.lead_b : m.lead_a))]);
       const skips = new Set(me.profile?.skips || []);
@@ -115,6 +131,7 @@ export async function GET(req) {
         if (excluded.has(cnd.id) || skips.has(cnd.id)) continue;
         if (!cnd.birth?.y || !cnd.profile?.avatar) continue;
         if (me.birth?.gender && cnd.birth?.gender && me.birth.gender === cnd.birth.gender) continue;
+        if (!isAdult(cnd.birth)) continue;
         const g = safeGonghap(me.birth, cnd.birth);
         if (!g) continue;
         if (!best || g.score > best.g.score) best = { cnd, g };
@@ -127,6 +144,7 @@ export async function GET(req) {
     name: me.name,
     cards,
     candidate,
+    dailyDone,
     hasProfile: !!(me.profile && me.profile.avatar),
     hasReport: !!me.report,
     myAvatar: me.profile?.avatar || "🐶",
@@ -145,6 +163,7 @@ export async function POST(req) {
 
   // ── 매칭 프로필 저장 (온보딩) ──
   if (action === "profile") {
+    if (!isAdult(me.birth)) return Response.json({ error: "紅線 매칭은 만 19세 이상만 이용할 수 있어요." }, { status: 403 });
     const p = profile || {};
     const clean = {
       avatar: String(p.avatar || "").slice(0, 8),
@@ -168,6 +187,7 @@ export async function POST(req) {
     if (action === "skip") {
       const prof = { ...(me.profile || {}) };
       prof.skips = [...new Set([...(prof.skips || []), cid])].slice(-100);
+      prof.lastCard = todayKST(); // 하루 1장 — 넘겨도 오늘 카드는 소진
       const { error } = await client.from("leads").update({ profile: prof }).eq("id", me.id);
       if (error) return Response.json({ error: error.message }, { status: 500 });
       return Response.json({ ok: true });
@@ -187,6 +207,11 @@ export async function POST(req) {
       .insert({ lead_a: me.id, lead_b: cid, a_accept: true, note: g?.note || null, status: "proposed" })
       .select("id").single();
     if (error) return Response.json({ error: error.message }, { status: 500 });
+    try {
+      const prof = { ...(me.profile || {}) };
+      prof.lastCard = todayKST();
+      await client.from("leads").update({ profile: prof }).eq("id", me.id);
+    } catch (e) {}
     return Response.json({ ok: true, id: created.id });
   }
 

@@ -124,7 +124,8 @@ export default async function ReportPage({ params }) {
       <footer style={{ paddingTop: 30 }}>
         <p>
           본 리포트는 명리학 이론에 기반한 참고용 콘텐츠이며,<br />
-          인생의 결정에 대한 유일한 근거가 될 수 없습니다.<br /><br />
+          인생의 결정에 대한 유일한 근거가 될 수 없습니다.<br />
+          이 링크는 본인 전용입니다 — 잃어버리면 안내 문자에 회신해주세요.<br /><br />
           © {new Date().getFullYear()} {CONFIG.BRAND}
         </p>
       </footer>

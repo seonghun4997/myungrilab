@@ -23,19 +23,33 @@ export async function GET(req) {
   const client = sb();
   const { data, error } = await client.from("matches").select("*").order("created_at", { ascending: false }).limit(100);
   if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ matches: data });
+  // 리드 이름·전화·토큰 조인 (문자 발송용)
+  const ids = [...new Set((data || []).flatMap((m) => [m.lead_a, m.lead_b]))];
+  let map = {};
+  if (ids.length) {
+    const { data: ls } = await client.from("leads").select("id, name, phone, token").in("id", ids);
+    for (const l of ls || []) map[l.id] = l;
+  }
+  const matches = (data || []).map((m) => ({
+    ...m,
+    aName: map[m.lead_a]?.name || "?", aPhone: map[m.lead_a]?.phone || "", aToken: map[m.lead_a]?.token || "",
+    bName: map[m.lead_b]?.name || "?", bPhone: map[m.lead_b]?.phone || "", bToken: map[m.lead_b]?.token || "",
+  }));
+  return Response.json({ matches });
 }
 
 export async function POST(req) {
   if (!authorized(req)) return Response.json({ error: "인증 실패" }, { status: 401 });
   const client = sb();
   if (!client) return Response.json({ error: "Supabase 미설정" }, { status: 500 });
+  try {
   const { action, aId, bId } = await req.json();
   if (!aId || !bId || aId === bId) return Response.json({ error: "두 사람을 선택하세요." }, { status: 400 });
 
   const { data: A } = await client.from("leads").select("id, name, birth, token").eq("id", aId).single();
   const { data: B } = await client.from("leads").select("id, name, birth, token").eq("id", bId).single();
   if (!A || !B) return Response.json({ error: "리드를 찾을 수 없습니다." }, { status: 404 });
+  if (!A.birth?.y || !B.birth?.y) return Response.json({ error: `생년월일 데이터가 없습니다 (${!A.birth?.y ? A.name : B.name})` }, { status: 400 });
 
   const g = gonghap(A.birth, B.birth, toLunar(A.birth), toLunar(B.birth));
 
@@ -52,6 +66,9 @@ export async function POST(req) {
     return Response.json({ id: data.id, aToken: A.token, bToken: B.token, ...g });
   }
   return Response.json({ error: "알 수 없는 동작" }, { status: 400 });
+  } catch (e) {
+    return Response.json({ error: "궁합 계산 실패: " + e.message }, { status: 500 });
+  }
 }
 
 export async function PATCH(req) {

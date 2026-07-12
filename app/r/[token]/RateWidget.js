@@ -43,6 +43,15 @@ export default function RateWidget({ token }) {
         ))}
       </div>
       {done && <p style={{ fontSize: 13, color: "var(--amethyst-hi)", marginTop: 10 }}>고맙습니다. 별 하나가 실 한 가닥이 됩니다.</p>}
+      {done && score >= 4 && (
+        <div style={{ marginTop: 14, textAlign: "left", background: "rgba(255,212,121,.07)", border: "1px solid rgba(255,212,121,.35)", borderRadius: 14, padding: "13px 15px" }}>
+          <p className="mono" style={{ fontSize: 10.5, letterSpacing: ".2em", color: "var(--gold)", marginBottom: 6 }}>리포트 후기 이벤트</p>
+          <p style={{ fontSize: 13.5, lineHeight: 1.75, color: "var(--tx)" }}>
+            커뮤니티(네이버 카페 · 다음 카페 · 에브리타임 등)에 <b style={{ color: "var(--gold)" }}>이미지를 포함한 후기</b>를 남기고,
+            그 링크를 안내 문자에 회신해주세요 — <b style={{ color: "var(--gold)" }}>전 제품 무료 쿠폰 1장</b>을 드립니다.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

@@ -39,6 +39,7 @@ alter table leads add column if not exists intro text;
 alter table leads add column if not exists match_optin boolean default false;
 alter table leads add column if not exists profile jsonb;
 alter table leads add column if not exists viewed_at timestamptz; -- 리포트 최초 열람 시각 (v14)
+alter table leads add column if not exists rating int; -- 감정서 별점 1~5 (v15)
 
 create table if not exists matches (
   id uuid primary key default gen_random_uuid(),
@@ -134,3 +135,10 @@ PRICE(33,000) / PRICE_ORIGINAL(165,000) / PAYMENT_URL / KAKAO_CHANNEL_URL 교체
 | 매칭 성사 | 양측 수락 | /admin 깔때기 |
 | 성사비 결제 | match_fee_click → 양측 성사비 체크 | Vercel Analytics + /admin 깔때기 |
 | 아이디 공유 | match_kakao_set → 상호 공개 | /admin 깔때기 |
+
+
+## v15 감정서 구조 (용용 골격 이식)
+序(명반 그리드) + 13장 + 월하노인의 편지. 티어별: 총운 7장 / 인기 12장 / 패키지 15장 전권.
+모든 위젯 수치(성향·욕구·부의그릇·직장인vs사업가·건강·희소도·운흐름·주의연도·유월)는 lib/scores.js에서 명반 배치로부터 결정론적으로 계산 — LLM은 해설만 담당.
+8장 연애운의 '운명의 상대 카드' 바로 아래 紅線 매칭 CTA, 편지 뒤 별점(leads.rating) 수집.
+구버전(v13 이하) 리포트는 report.__v 부재로 판별해 기존 형식 그대로 렌더.

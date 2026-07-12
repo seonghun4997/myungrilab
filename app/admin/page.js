@@ -97,7 +97,7 @@ export default function Admin() {
 
   const reportUrl = (token) => `${window.location.origin}/r/${token}`;
   const kakaoMsg = (l) =>
-    `[${CONFIG.BRAND}] ${l.name}님, 운명의 짝 정밀 감정서가 완성되었습니다.\n\n아래 링크에서 확인하세요 (본인 전용 링크입니다):\n${reportUrl(l.token)}\n\n읽으시다 궁금한 점은 이 채팅으로 언제든 물어보세요.`;
+    `[${CONFIG.BRAND}] ${l.name}님, 월하노인의 인연 감정서가 완성되었습니다.\n\n아래 링크에서 확인하세요 (본인 전용 링크입니다):\n${reportUrl(l.token)}\n\n읽으시다 궁금한 점은 이 채팅으로 언제든 물어보세요.`;
 
   return (
     <main className="wrap" style={{ paddingTop: 40, paddingBottom: 80 }}>

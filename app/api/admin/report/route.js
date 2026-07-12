@@ -6,8 +6,8 @@ export const maxDuration = 60;
 
 import { sb } from "../../../../lib/supabase";
 import { computeZiwei } from "../../../../lib/ziwei";
-import { buildFacts, SECTIONS, EXTRA_SECTIONS } from "../../../../lib/report";
-import { generateSection } from "../../../../lib/generate";
+import { buildFacts, CHAPTERS, TIER_CHAPTER_IDS } from "../../../../lib/report";
+import { generateChapter } from "../../../../lib/generate";
 import KLCmod from "korean-lunar-calendar";
 
 export async function POST(req) {
@@ -37,17 +37,18 @@ export async function POST(req) {
     });
     const facts = buildFacts(z, b.concern || null);
     const tier = lead.quiz_hits && [1, 2, 3].includes(lead.quiz_hits) ? lead.quiz_hits : 1;
-    const sectionList = [...SECTIONS, ...(EXTRA_SECTIONS[tier] || [])];
+    const chapterIds = TIER_CHAPTER_IDS[tier] || TIER_CHAPTER_IDS[1];
 
     const results = await Promise.all(
-      sectionList.map(async (s) => {
-        try { return [s.id, await generateSection(facts, s.id)]; }
-        catch (e) { return [s.id, null]; }
+      chapterIds.map(async (id) => {
+        try { return [id, await generateChapter(facts, id, lead.name)]; }
+        catch (e) { return [id, null]; }
       })
     );
-    const report = Object.fromEntries(results);
+    const chapters = Object.fromEntries(results.filter(([, t]) => t));
+    const report = { __v: 15, tier, chapters };
     const failed = results.filter(([, t]) => !t).map(([id]) => id);
-    if (failed.length === sectionList.length) {
+    if (failed.length === chapterIds.length) {
       return Response.json({ error: "감정서 생성에 모두 실패했습니다. API 키/크레딧을 확인하세요." }, { status: 502 });
     }
 

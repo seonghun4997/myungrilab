@@ -52,11 +52,17 @@ export default function Home() {
   const [leadId, setLeadId] = useState(null);
   const [leadToken, setLeadToken] = useState(null);
   const [lastSnap, setLastSnap] = useState(null);
+  const [paySnap, setPaySnap] = useState(null); // 미완 결제 복구 스냅샷
   const topRef = useRef(null);
 
   useEffect(() => {
     captureUtm();
     try {
+      const r = localStorage.getItem("jm_resume");
+      if (r) {
+        const snap = JSON.parse(r);
+        if (snap.leadId && Date.now() - (snap.ts || 0) < 48 * 3600 * 1000) setPaySnap(snap);
+      }
       const s = localStorage.getItem("jm_last");
       if (s) setLastSnap(JSON.parse(s));
       const f = localStorage.getItem("jm_form");
@@ -81,6 +87,28 @@ export default function Home() {
     if (fi > farthest) setFarthest(fi);
     ev("step_" + s);
     setTimeout(() => topRef.current?.scrollIntoView({ behavior: "auto" }), 20);
+  };
+
+  const resumePay = async () => {
+    if (!paySnap) return;
+    try {
+      const mod = await import("korean-lunar-calendar");
+      const KLC = mod.default || mod;
+      const c = new KLC();
+      if (!c.setSolarDate(paySnap.sy, paySnap.sm, paySnap.sd)) throw new Error("date");
+      const lun = c.getLunarCalendar();
+      const z = computeZiwei({
+        lunarYear: lun.year, lunarMonth: lun.month, lunarDay: lun.day,
+        hourBranch: paySnap.slot ?? 6, gender: paySnap.gender,
+        solarYear: paySnap.sy, solarMonth: paySnap.sm, solarDay: paySnap.sd,
+      });
+      setZiwei(z);
+      setForm((f) => ({ ...f, y: paySnap.sy, m: paySnap.sm, d: paySnap.sd, slot: paySnap.slot ?? 6, gender: paySnap.gender, name: paySnap.name || f.name, cal: "solar" }));
+      setLeadId(paySnap.leadId);
+      setLeadToken(paySnap.leadToken);
+      ev("resume_pay");
+      goto("pay");
+    } catch (e) {}
   };
 
   const startFunnel = () => {
@@ -174,6 +202,12 @@ export default function Home() {
         const s = JSON.parse(localStorage.getItem("jm_last") || "{}");
         s.token = data.token || null;
         localStorage.setItem("jm_last", JSON.stringify(s));
+        // 결제 복구용 스냅샷 — 페이지가 날아가도 '이어서 결제'로 되살린다
+        localStorage.setItem("jm_resume", JSON.stringify({
+          leadId: data.id, leadToken: data.token || null,
+          sy, sm, sd, slot: form.slot, gender: form.gender, name: form.name.trim(),
+          ts: Date.now(),
+        }));
       } catch (e) {}
       ev("lead_submitted", { saved: !!data.id, concern: !!form.concern.trim() });
     } catch (e) { ev("lead_submitted", { saved: false }); }
@@ -183,7 +217,7 @@ export default function Home() {
   return (
     <main className="phone">
       <div ref={topRef} />
-      {step === "intro" && <Landing onStart={startFunnel} onResume={lastSnap ? resume : null} />}
+      {step === "intro" && <Landing onStart={startFunnel} onResume={lastSnap ? resume : null} onResumePay={paySnap ? resumePay : null} />}
       {INPUT_STEPS.includes(step) && (
         <ElderFlow step={step} form={form} setForm={setForm} goto={goto} onSubmit={submitAll} farthest={farthest} />
       )}
@@ -288,7 +322,7 @@ function CountUp({ end, suffix, duration = 1400 }) {
 }
 
 // ---------------- 0. 롱폼 랜딩 ----------------
-function Landing({ onStart, onResume }) {
+function Landing({ onStart, onResume, onResumePay }) {
   useReveal();
   useSectionTrack();
   return (
@@ -420,7 +454,8 @@ function Landing({ onStart, onResume }) {
         <h2 className="l-title rv" style={{ fontSize: 30, textAlign: "center" }}>
           {LANDING.FINAL_T.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}
         </h2>
-        {onResume && <button className="resume-chip rv" onClick={onResume}>지난 감정 다시 보기 →</button>}
+        {onResumePay && <button className="resume-chip" style={{ background: "rgba(255,212,121,.12)", borderColor: "rgba(255,212,121,.5)", color: "var(--gold)" }} onClick={onResumePay}>결제하던 감정 이어서 하기 →</button>}
+        {onResume && !onResumePay && <button className="resume-chip rv" onClick={onResume}>지난 감정 다시 보기 →</button>}
         <SiteFooter />
       </section>
 
@@ -933,7 +968,12 @@ function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth
             className="paybtn"
             style={{ textDecoration: "none", background: "linear-gradient(135deg,#3182f6,#1b64da)" }}
             href={tossLink(price)}
-            onClick={() => { ev("pay_click", { tier: P.id, method: "toss" }); setPaidClicked(true); }}
+            onClick={(e) => {
+              e.preventDefault(); // 페이지를 떠나지 않는다 — 토스 앱만 위로 뜨고, 돌아오면 이 화면 그대로
+              ev("pay_click", { tier: P.id, method: "toss" });
+              setPaidClicked(true);
+              try { window.location.href = tossLink(price); } catch (err) {}
+            }}
           >
             토스로 3초 결제 — 계좌·금액 자동 입력
           </a>

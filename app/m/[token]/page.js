@@ -388,7 +388,8 @@ export default function MatchBox() {
               <button className="hx-btn ghost" style={{ marginTop: 10, padding: "10px", fontSize: 13 }} onClick={() => copy(`${BANK.NAME} ${BANK.ACCOUNT}`, "acc")}>
                 {copied === "acc" ? "복사되었어요" : "계좌번호 복사"}
               </button>
-              <a className="hx-btn" style={{ marginTop: 8, padding: "10px", fontSize: 13, background: "#3182f6" }} href={tossLink(MATCH_CONFIG.PRICE)}>토스로 3초 송금 (토스 앱 필요)</a>
+              <a className="hx-btn" style={{ marginTop: 8, padding: "10px", fontSize: 13, background: "#3182f6" }} href={tossLink(MATCH_CONFIG.PRICE)}
+                onClick={(e) => { e.preventDefault(); try { window.location.href = tossLink(MATCH_CONFIG.PRICE); } catch (err) {} }}>토스로 3초 송금 (토스 앱 필요)</a>
               <p className="hx-dim" style={{ marginTop: 10, fontSize: 10.5, lineHeight: 1.6 }}>{LEGAL.REFUND}</p>
               <p className="hx-dim" style={{ marginTop: 10, lineHeight: 1.7 }}>
                 입금자명은 <b style={{ color: "#1c1633" }}>문답에 적으신 성함</b>으로 보내주세요.<br />

@@ -32,10 +32,15 @@ export async function POST(req) {
 
 export async function PATCH(req) {
   try {
-    const { id, quizHits, intro, matchOptin, profile } = await req.json();
+    const { id, quizHits, intro, matchOptin, profile, name, phone, birth, salNames, salCount } = await req.json();
     const client = sb();
     if (!client || !id) return Response.json({ ok: false });
     const upd = {};
+    if (name !== undefined) upd.name = String(name).slice(0, 30);
+    if (phone !== undefined) upd.phone = String(phone).replace(/[^0-9]/g, "");
+    if (birth !== undefined) { upd.birth = birth; upd.report = null; } // 생년 수정 → 기존 감정서 무효화 (재생성)
+    if (salNames !== undefined) upd.sal_names = salNames;
+    if (salCount !== undefined) upd.sal_count = salCount;
     if (quizHits !== undefined) upd.quiz_hits = quizHits;
     if (intro !== undefined) upd.intro = String(intro).slice(0, 500);
     if (matchOptin !== undefined) upd.match_optin = !!matchOptin;
@@ -43,7 +48,8 @@ export async function PATCH(req) {
     if (Object.keys(upd).length === 0) return Response.json({ ok: false });
     const { error } = await client.from("leads").update(upd).eq("id", id);
     if (error) { console.error(error.message); return Response.json({ ok: false }); }
-    return Response.json({ ok: true });
+    const { data: cur } = await client.from("leads").select("id, token").eq("id", id).single();
+    return Response.json({ ok: true, id, token: cur?.token, saved: true });
   } catch (e) {
     return Response.json({ ok: false });
   }

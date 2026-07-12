@@ -8,6 +8,7 @@
 import { sb } from "../../../lib/supabase";
 import { gonghap, gonghapDetail, displayScore, gradePct } from "../../../lib/gonghap";
 import { MATCH_CONFIG } from "../../../lib/content";
+import { smsSafe, MSG } from "../../../lib/sms";
 
 // 저품질 자기소개 필터 — 대충 쓴 프로필은 후보 풀·저장에서 제외
 function isQualityIntro(text) {
@@ -127,7 +128,9 @@ export async function GET(req) {
   // ── 자동 추천: 명반 궁합이 가장 좋은 후보 1명 (하루 1장) ──
   let candidate = null;
   const dailyDone = me.profile?.lastCard === todayKST();
-  if (me.profile?.avatar && me.birth?.y && !dailyDone) {
+  const myG = me.birth?.gender;
+  if (me.profile?.avatar && me.birth?.y && !dailyDone && (myG === "M" || myG === "F")) {
+    const wantG = myG === "M" ? "F" : "M";
     try {
       const excluded = new Set([me.id, ...(rows || []).map((m) => (m.lead_a === me.id ? m.lead_b : m.lead_a))]);
       const skips = new Set(me.profile?.skips || []);
@@ -143,7 +146,7 @@ export async function GET(req) {
         if (excluded.has(cnd.id) || skips.has(cnd.id)) continue;
         if (!cnd.birth?.y || !cnd.profile?.avatar) continue;
         if (!isQualityIntro(cnd.intro)) continue; // 대충 쓴 프로필 제외
-        if (me.birth?.gender && cnd.birth?.gender && me.birth.gender === cnd.birth.gender) continue;
+        if (cnd.birth?.gender !== wantG) continue; // 이성만 — 성별 미기재도 제외
         if (!isAdult(cnd.birth)) continue;
         const g = safeGonghap(me.birth, cnd.birth);
         if (!g) continue;
@@ -209,8 +212,12 @@ export async function POST(req) {
     }
 
     // propose — 검증 후 매칭 생성 (내 쪽은 이미 수락 상태)
-    const { data: cnd } = await client.from("leads").select("id, birth, profile, match_optin").eq("id", cid).single();
+    const { data: cnd } = await client.from("leads").select("id, name, phone, token, birth, profile, match_optin").eq("id", cid).single();
     if (!cnd || !cnd.match_optin || !cnd.birth?.y) return Response.json({ error: "지금은 이을 수 없는 인연이에요." }, { status: 400 });
+    const g1 = me.birth?.gender, g2 = cnd.birth?.gender;
+    if (!((g1 === "M" && g2 === "F") || (g1 === "F" && g2 === "M"))) {
+      return Response.json({ error: "지금은 이을 수 없는 인연이에요." }, { status: 400 });
+    }
     const { data: dup } = await client
       .from("matches").select("id")
       .or(`and(lead_a.eq.${me.id},lead_b.eq.${cid}),and(lead_a.eq.${cid},lead_b.eq.${me.id})`)
@@ -227,6 +234,8 @@ export async function POST(req) {
       prof.lastCard = todayKST();
       await client.from("leads").update({ profile: prof }).eq("id", me.id);
     } catch (e) {}
+    // 상대에게 카드 도착 문자 (자동)
+    await smsSafe(cnd.phone, MSG.card(cnd.name, new URL(req.url).origin, cnd.token));
     return Response.json({ ok: true, id: created.id });
   }
 
@@ -240,6 +249,16 @@ export async function POST(req) {
     const upd = iAmA ? { a_accept: !!accept } : { b_accept: !!accept };
     const { error } = await client.from("matches").update(upd).eq("id", matchId);
     if (error) return Response.json({ error: error.message }, { status: 500 });
+    // 이 수락으로 성사가 완성됐다면 → 양쪽에 성사 문자 (자동)
+    if (accept) {
+      const otherAccept = iAmA ? m.b_accept : m.a_accept;
+      if (otherAccept === true) {
+        const origin = new URL(req.url).origin;
+        const ids = [m.lead_a, m.lead_b];
+        const { data: both } = await client.from("leads").select("id, name, phone, token").in("id", ids);
+        for (const l of both || []) await smsSafe(l.phone, MSG.matched(l.name, origin, l.token));
+      }
+    }
     return Response.json({ ok: true });
   }
   if (action === "kakao") {

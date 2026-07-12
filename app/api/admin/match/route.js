@@ -5,6 +5,7 @@
 import { sb } from "../../../../lib/supabase";
 import { gonghap } from "../../../../lib/gonghap";
 import KLCmod from "korean-lunar-calendar";
+import { smsSafe, MSG } from "../../../../lib/sms";
 
 function authorized(req) {
   const key = req.headers.get("x-admin-key");
@@ -46,8 +47,8 @@ export async function POST(req) {
   const { action, aId, bId } = await req.json();
   if (!aId || !bId || aId === bId) return Response.json({ error: "두 사람을 선택하세요." }, { status: 400 });
 
-  const { data: A } = await client.from("leads").select("id, name, birth, token").eq("id", aId).single();
-  const { data: B } = await client.from("leads").select("id, name, birth, token").eq("id", bId).single();
+  const { data: A } = await client.from("leads").select("id, name, phone, birth, token").eq("id", aId).single();
+  const { data: B } = await client.from("leads").select("id, name, phone, birth, token").eq("id", bId).single();
   if (!A || !B) return Response.json({ error: "리드를 찾을 수 없습니다." }, { status: 404 });
   if (!A.birth?.y || !B.birth?.y) return Response.json({ error: `생년월일 데이터가 없습니다 (${!A.birth?.y ? A.name : B.name})` }, { status: 400 });
 
@@ -57,13 +58,21 @@ export async function POST(req) {
     return Response.json({ ...g, aName: A.name, bName: B.name });
   }
   if (action === "create") {
+    const gA = A.birth?.gender, gB = B.birth?.gender;
+    if (!((gA === "M" && gB === "F") || (gA === "F" && gB === "M"))) {
+      const t = (g) => (g === "M" ? "남" : g === "F" ? "여" : "미기재");
+      return Response.json({ error: `이성끼리만 발송할 수 있습니다 — ${A.name}:${t(gA)} · ${B.name}:${t(gB)}` }, { status: 400 });
+    }
     const { data, error } = await client
       .from("matches")
       .insert({ lead_a: aId, lead_b: bId, note: g.note, status: "proposed" })
       .select("id")
       .single();
     if (error) return Response.json({ error: error.message }, { status: 500 });
-    return Response.json({ id: data.id, aToken: A.token, bToken: B.token, ...g });
+    const origin = new URL(req.url).origin;
+    await smsSafe(A.phone, MSG.card(A.name, origin, A.token)); // 양쪽 자동 문자
+    await smsSafe(B.phone, MSG.card(B.name, origin, B.token));
+    return Response.json({ id: data.id, aToken: A.token, bToken: B.token, ...g, smsSent: true });
   }
   return Response.json({ error: "알 수 없는 동작" }, { status: 400 });
   } catch (e) {

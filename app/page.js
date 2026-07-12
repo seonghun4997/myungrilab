@@ -74,8 +74,11 @@ export default function Home() {
     } catch (e) {}
   }, [form]);
 
+  const [farthest, setFarthest] = useState(0); // 문답 최대 진행 지점 (수정 후 복귀용)
   const goto = (s) => {
     setStep(s);
+    const fi = INPUT_STEPS.indexOf(s);
+    if (fi > farthest) setFarthest(fi);
     ev("step_" + s);
     setTimeout(() => topRef.current?.scrollIntoView({ behavior: "auto" }), 20);
   };
@@ -143,9 +146,10 @@ export default function Home() {
       const nowYear = new Date().getFullYear();
       const nd = z.daehan.map((d) => ({ ...d, startYear: sy + d.startAge - 1 })).find((d) => d.startYear >= nowYear);
       const res = await fetch("/api/lead", {
-        method: "POST",
+        method: leadId ? "PATCH" : "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
+          id: leadId || undefined,
           name: form.name.trim(),
           phone: form.phone.replace(/[^0-9]/g, ""),
           birth: {
@@ -181,11 +185,13 @@ export default function Home() {
       <div ref={topRef} />
       {step === "intro" && <Landing onStart={startFunnel} onResume={lastSnap ? resume : null} />}
       {INPUT_STEPS.includes(step) && (
-        <ElderFlow step={step} form={form} setForm={setForm} goto={goto} onSubmit={submitAll} />
+        <ElderFlow step={step} form={form} setForm={setForm} goto={goto} onSubmit={submitAll} farthest={farthest} />
       )}
       {step === "checking" && <Checking />}
       {step === "diag" && ziwei && <Diagnosis z={ziwei} name={form.name} timeUnknown={form.timeUnknown} onPay={() => goto("pay")} />}
-      {step === "pay" && ziwei && <Payment leadId={leadId} leadToken={leadToken} birthYear={ziwei.input.solarYear} onBack={() => goto("diag")} />}
+      {step === "pay" && ziwei && <Payment leadId={leadId} leadToken={leadToken} birthYear={ziwei.input.solarYear} onBack={() => goto("diag")}
+        birthLine={`${form.y}.${form.m}.${form.d} (${form.cal === "solar" ? "양" : "음"}) · ${form.timeUnknown ? "시간 미상" : TIME_SLOTS[form.slot]?.label} · ${form.gender === "M" ? "남" : "여"}`}
+        onEditBirth={() => goto("birth")} />}
     </main>
   );
 }
@@ -432,9 +438,10 @@ function Landing({ onStart, onResume }) {
 }
 
 // ---------------- 1. 노인 문답 ----------------
-function ElderFlow({ step, form, setForm, goto, onSubmit }) {
+function ElderFlow({ step, form, setForm, goto, onSubmit, farthest = 0 }) {
   const idx = INPUT_STEPS.indexOf(step);
-  const next = () => goto(INPUT_STEPS[idx + 1]);
+  const isEdit = farthest > idx; // 뒤로 와서 고치는 중
+  const next = () => goto(INPUT_STEPS[isEdit ? farthest : idx + 1]); // 고치고 나면 원래 자리로
   const back = () => goto(idx === 0 ? "intro" : INPUT_STEPS[idx - 1]);
   const NUM = { gender: "問 一", birth: "問 二", time: "問 三", phone: "問 四", name: "問 五", concern: "問 六" };
   const MARK = { gender: "性", birth: "生", time: "時", phone: "絡", name: "名", concern: "憂" };
@@ -466,6 +473,11 @@ function ElderFlow({ step, form, setForm, goto, onSubmit }) {
           </>
         )}
 
+        {isEdit && (
+          <p className="mono" style={{ fontSize: 11, color: "var(--gold)", marginBottom: 10 }}>
+            고쳐 적으시게 — 확인하면 하던 곳으로 바로 돌아가네.
+          </p>
+        )}
         <div className="ask-input">
           {step === "birth" && <BirthInput form={form} setForm={setForm} onDone={next} />}
           {step === "time" && <TimeInput form={form} setForm={setForm} onDone={next} />}
@@ -512,6 +524,13 @@ function BirthInput({ form, setForm, onDone }) {
     return null;
   })();
   const valid = digits.length === 8 && !problem;
+  const preview = (() => {
+    if (!valid) return null;
+    const y = +digits.slice(0, 4);
+    const age = new Date().getFullYear() - y + 1;
+    const zodiac = ["원숭이", "닭", "개", "돼지", "쥐", "소", "호랑이", "토끼", "용", "뱀", "말", "양"][y % 12];
+    return `${y}년생 · 올해 ${age}살 · ${zodiac}띠 — 맞으신가?`;
+  })();
   const commit = () => {
     if (!valid) return;
     setForm({ ...form, y: +digits.slice(0, 4), m: +digits.slice(4, 6), d: +digits.slice(6, 8) });
@@ -527,6 +546,7 @@ function BirthInput({ form, setForm, onDone }) {
       <input className="field" inputMode="numeric" placeholder="0000년 00월 00일" value={disp}
         onChange={(e) => setVal(e.target.value)} onKeyDown={(e) => e.key === "Enter" && commit()} autoFocus />
       {problem && <p className="input-hint">{problem}</p>}
+      {preview && <p className="input-hint" style={{ color: "var(--gold)" }}>{preview}</p>}
       {form.cal === "lunar" && (
         <label className="chk"><input type="checkbox" checked={form.leap} onChange={(e) => setForm({ ...form, leap: e.target.checked })} /> 윤달</label>
       )}
@@ -755,7 +775,7 @@ function OfferBar({ onPay }) {
 }
 
 // ---------------- 4. 결제 (3단 패키지) + 紅線 ----------------
-function Payment({ leadId, leadToken, birthYear, onBack }) {
+function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth }) {
   const [prodIdx, setProdIdx] = useState(1); // 기본 [인기]
   const [coupon, setCoupon] = useState("");
   const [couponApplied, setCouponApplied] = useState(0);
@@ -852,6 +872,12 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
 
       <div className="paycard">
         <div className="ph"><span className="eyebrow">{CONFIG.BRAND_HANJA}</span><b>자미두수 정밀 감정서</b></div>
+        {birthLine && (
+          <p className="mono" style={{ fontSize: 11.5, color: "var(--tx-dim)", textAlign: "center", margin: "6px 0 4px" }}>
+            입력 정보: {birthLine}{" "}
+            <button onClick={onEditBirth} style={{ background: "none", border: "none", color: "var(--amethyst-hi)", cursor: "pointer", fontFamily: "inherit", fontSize: 11.5, textDecoration: "underline" }}>수정</button>
+          </p>
+        )}
 
         {/* 상품 3단 */}
         <div className="prod-list">
@@ -930,7 +956,7 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
 
             <p className="ap-t" style={{ marginTop: 14 }}>이후 절차 — 그대는 입금만 하면 되네</p>
             <div className="ap-step"><span>①</span> 입금 — 위 계좌로 (토스 결제도 같은 계좌로 들어오네)</div>
-            <div className="ap-step"><span>②</span> 확인 — 시스템이 입금 내역을 순차 대조하네 (영업시간 기준 1시간 이내)</div>
+            <div className="ap-step"><span>②</span> 확인 — 시스템이 입금 내역을 순차 대조하네<br /><span style={{ fontSize: 12, color: "var(--tx-dim)", marginLeft: 26 }}>확인 시간: 매일 오전 9시~밤 12시 (이 시간엔 보통 1시간 이내) · 심야 입금은 다음 날 오전 9시부터 순차 처리</span></div>
             <div className="ap-step"><span>③</span> 문자 — 남기신 번호 {form.phone ? form.phone.replace(/(\d{3})(\d{3,4})(\d{4})/, "$1-$2-$3") : ""}로 감정서 링크가 자동 발송되네</div>
 
             {!depositDone ? (

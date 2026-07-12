@@ -392,7 +392,8 @@ export default function MatchBox() {
               <p className="hx-dim" style={{ marginTop: 10, fontSize: 10.5, lineHeight: 1.6 }}>{LEGAL.REFUND}</p>
               <p className="hx-dim" style={{ marginTop: 10, lineHeight: 1.7 }}>
                 입금자명은 <b style={{ color: "#1c1633" }}>문답에 적으신 성함</b>으로 보내주세요.<br />
-                입금이 확인되면 위 표가 '확인됨'으로 바뀌고, 문자로도 알려드려요.
+                확인 시간: 매일 오전 9시~밤 12시 (보통 1시간 이내) · 심야 입금은 다음 날 오전 9시부터 순차 처리돼요.<br />
+                확인되면 위 표가 '확인됨'으로 바뀌고, 문자로도 알려드려요.
               </p>
             </div>
           )}

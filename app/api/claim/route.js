@@ -8,6 +8,7 @@ export const maxDuration = 300;
 import { sb } from "../../../lib/supabase";
 import { CONFIG } from "../../../lib/content";
 import { generateReportForLead } from "../../../lib/reportgen";
+import { smsSafe, MSG } from "../../../lib/sms";
 
 export async function POST(req) {
   try {
@@ -26,6 +27,10 @@ export async function POST(req) {
     try { await client.from("leads").update({ paid: true, intro: lead.intro || `[쿠폰:${code}]` }).eq("id", lead.id); } catch (e) {}
 
     const { token, failed } = await generateReportForLead(client, { ...lead, paid: true });
+    if (token) {
+      const origin = new URL(req.url).origin;
+      await smsSafe(lead.phone, MSG.report(lead.name, origin, token)); // 링크 보존용 자동 문자
+    }
     return Response.json({ token, failed });
   } catch (e) {
     console.error(e);

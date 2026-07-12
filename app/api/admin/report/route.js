@@ -6,6 +6,7 @@ export const maxDuration = 300;
 
 import { sb } from "../../../../lib/supabase";
 import { generateReportForLead } from "../../../../lib/reportgen";
+import { smsSafe, MSG } from "../../../../lib/sms";
 
 export async function POST(req) {
   try {
@@ -21,6 +22,10 @@ export async function POST(req) {
     if (error || !lead) return Response.json({ error: "리드를 찾을 수 없습니다." }, { status: 404 });
 
     const { token, reused, failed } = await generateReportForLead(client, lead);
+    if (!reused && token) {
+      const origin = new URL(req.url).origin;
+      await smsSafe(lead.phone, MSG.report(lead.name, origin, token)); // 자동 발송 (실패해도 무시)
+    }
     return Response.json(reused ? { token, reused } : { token, failed });
   } catch (e) {
     console.error(e);

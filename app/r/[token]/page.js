@@ -26,6 +26,30 @@ function renderText(text) {
   ));
 }
 
+// v15.2 — [[소제목]]/[[인용]] 마커 파싱 (구버전 텍스트는 null 반환 → 기존 렌더)
+function parseChapter(text) {
+  if (!text || !text.includes("[[소제목]]")) return null;
+  let quote = null;
+  let body = text;
+  const qi = text.indexOf("[[인용]]");
+  if (qi >= 0) {
+    quote = text.slice(qi + "[[인용]]".length).trim().replace(/^["“」』]+|["”「『]+$/g, "").trim();
+    body = text.slice(0, qi);
+  }
+  const subs = body
+    .split("[[소제목]]")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((chunk) => {
+      const nl = chunk.indexOf("\n");
+      if (nl < 0) return { title: chunk.trim(), body: "" };
+      return { title: chunk.slice(0, nl).trim(), body: chunk.slice(nl + 1).trim() };
+    })
+    .filter((s) => s.title || s.body);
+  if (!subs.length) return null;
+  return { subs, quote };
+}
+
 function computeForLead(b) {
   try {
     const KLC = KLCmod.default || KLCmod;
@@ -72,6 +96,11 @@ function ChapterWidgets({ ids, scores, z, gender, name }) {
               keywords={["말이 앞섬", "감정 기복", "책임 회피", "경쟁 유발"]} />
           </div>
         );
+      case "gwiin_good":
+        return <PersonCard key={wid} title={`날 도와줄 귀인 — 천이궁 ${scores.귀인카드.별.join("·") || "차성"}`} keywords={scores.귀인카드.키워드} />;
+      case "gwiin_bad":
+        return <PersonCard key={wid} title={`조심할 인연의 단서 — 노복궁 ${scores.악인단서.별.join("·") || "차성"}`} tone="red"
+          keywords={["말이 앞섬", "감정 기복", "책임 회피", "경쟁 유발"]} />;
       case "turning":
         return scores.다음대운시작 ? (
           <div key={wid} style={{ textAlign: "center", margin: "14px 0", padding: "16px 12px", borderRadius: 14, background: "rgba(255,212,121,.08)", border: "1px solid rgba(255,212,121,.3)" }}>
@@ -161,8 +190,49 @@ export default async function ReportPage({ params }) {
                       <div className="mono" style={{ fontSize: 10.5, letterSpacing: ".3em", color: "var(--amethyst-hi)", marginBottom: 4 }}>{ch.no}</div>
                       <h2 className="display" style={{ fontSize: 19, color: "var(--tx)" }}>{ch.title}</h2>
                     </div>
-                    {renderText(text)}
-                    <ChapterWidgets ids={ch.widget} scores={computed.scores} z={computed.z} gender={b.gender} name={lead.name} />
+                    {(() => {
+                      const parsed = parseChapter(text);
+                      const W = (ids, key) => (
+                        <ChapterWidgets key={key} ids={ids} scores={computed.scores} z={computed.z} gender={b.gender} name={lead.name} />
+                      );
+                      if (!parsed) {
+                        // 구형(마커 없는) 장 — 기존 방식 그대로
+                        return (
+                          <>
+                            {renderText(text)}
+                            {W(ch.widget, "w-all")}
+                          </>
+                        );
+                      }
+                      const wpos = ch.wpos || [];
+                      const out = [];
+                      parsed.subs.forEach((s, i) => {
+                        if (s.title) {
+                          out.push(
+                            <h3 key={"t" + i} className="display" style={{ fontSize: 16.5, color: "var(--amethyst-hi)", margin: (i ? 30 : 6) + "px 0 12px" }}>
+                              {s.title}
+                            </h3>
+                          );
+                        }
+                        if (s.body) out.push(<div key={"b" + i}>{renderText(s.body)}</div>);
+                        ch.widget.forEach((wid, k) => {
+                          if (wpos[k] === i + 1) out.push(W([wid], "w" + k));
+                        });
+                      });
+                      const leftovers = ch.widget.filter((_, k) => !(wpos[k] >= 1 && wpos[k] <= parsed.subs.length));
+                      if (leftovers.length) out.push(W(leftovers, "w-rest"));
+                      if (parsed.quote) {
+                        out.push(
+                          <div key="q" style={{ textAlign: "center", margin: "30px 10px 8px" }}>
+                            <hr className="divider" style={{ margin: "0 auto 18px", maxWidth: 80 }} />
+                            <p className="display" style={{ fontSize: 16.5, lineHeight: 1.95, color: "var(--tx)", whiteSpace: "pre-line" }}>
+                              “{parsed.quote}”
+                            </p>
+                          </div>
+                        );
+                      }
+                      return out;
+                    })()}
                     {ch.id === "ch08" && (
                       <a href={CONFIG.KAKAO_CHANNEL_URL} target="_blank" rel="noreferrer" className="btn btn-seal" style={{ marginTop: 4, fontSize: 14.5 }}>
                         紅線 — 이 상대를 자미두수 궁합으로 찾아드립니다

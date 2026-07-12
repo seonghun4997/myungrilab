@@ -3,7 +3,7 @@
 // 쿠폰 코드가 서버에서 검증되면: paid 처리 → 감정서 생성 → token 반환
 // 관리자 개입 없이 고객이 결제 페이지에서 바로 감정서를 받는다.
 // ============================================================
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 import { sb } from "../../../lib/supabase";
 import { CONFIG } from "../../../lib/content";

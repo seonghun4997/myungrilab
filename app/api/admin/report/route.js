@@ -2,7 +2,7 @@
 // /api/admin/report — 리드 1건의 인연 감정서 생성 (ADMIN_KEY 필요)
 // 실제 파이프라인은 lib/reportgen.js 공용 모듈 사용
 // ============================================================
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 import { sb } from "../../../../lib/supabase";
 import { generateReportForLead } from "../../../../lib/reportgen";

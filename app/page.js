@@ -11,6 +11,7 @@ import {
   AVATARS, AVATAR_META, INTERESTS, MATCH_UI, LANDING, PRODUCTS, REVIEWS,
 } from "../lib/content";
 import { track } from "@vercel/analytics";
+import ReadingShow from "./ReadingShow";
 
 const FBQ_MAP = { lead_submitted: "Lead", pay_click: "InitiateCheckout", pay_view: "ViewContent", match_apply: "SubmitApplication" };
 function ev(name, data) {
@@ -903,11 +904,7 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
           결제하기
         </a>
         )}
-        {claiming && (
-          <p className="mono" style={{ fontSize: 10.5, color: "var(--amethyst-hi)", textAlign: "center", marginTop: 8 }}>
-            열두 궁의 별을 하나씩 읽고 있어요 — 화면을 닫지 마세요
-          </p>
-        )}
+        {claiming && <ReadingShow />}
         {claimErr && (
           <p className="mono" style={{ fontSize: 10.5, color: "#ff8b98", textAlign: "center", marginTop: 8 }}>{claimErr}</p>
         )}

@@ -131,6 +131,8 @@ export default function MatchBox() {
   };
 
   const respond = (matchId, accept) => { ev(accept ? "match_accept" : "match_decline"); post({ matchId, action: "respond", accept }); };
+  const propose = (cid) => { ev("match_propose"); post({ action: "propose", candidateId: cid }); };
+  const skip = (cid) => { ev("match_skip"); setOpened((o) => ({ ...o, cand: false })); post({ action: "skip", candidateId: cid }); };
   const saveKakao = (matchId) => { if (!kakao.trim()) return; ev("match_kakao_set"); post({ matchId, action: "kakao", kakaoId: kakao }); setKakao(""); };
   const saveProfile = async () => {
     ev("match_profile_done");
@@ -142,6 +144,7 @@ export default function MatchBox() {
   const cards = data?.cards || [];
   const hero = cards.find((c) => c.myAccept == null && !c.matched);
   const rest = cards.filter((c) => c !== hero);
+  const cand = !hero && data?.candidate ? data.candidate : null;
 
   const css = `
     .hx{min-height:100vh;background:#f6f6fb;color:#1c1633;font-family:-apple-system,BlinkMacSystemFont,"Pretendard","Apple SD Gothic Neo","Noto Sans KR",sans-serif;letter-spacing:-.01em}
@@ -266,7 +269,7 @@ export default function MatchBox() {
   }
 
   // ───────── 궁합 카드 (열린 상태) ─────────
-  const OpenCard = ({ c }) => (
+  const OpenCard = ({ c, onAccept, onDecline }) => (
     <div className="hx-card">
       <div style={{ textAlign: "center" }}>
         <ScoreRing emoji={c.other.avatar} score={c.score || 76} />
@@ -290,13 +293,13 @@ export default function MatchBox() {
           <p>{c.note}</p>
         </div>
       )}
-      {c.myAccept == null && !c.matched && (
+      {onAccept && (
         <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-          <button className="hx-btn pink" style={{ flex: 1.5 }} disabled={busy} onClick={() => respond(c.id, true)}>인연 잇기</button>
-          <button className="hx-btn ghost" style={{ flex: 1 }} disabled={busy} onClick={() => respond(c.id, false)}>보내기</button>
+          <button className="hx-btn pink" style={{ flex: 1.5 }} disabled={busy} onClick={onAccept}>인연 잇기</button>
+          <button className="hx-btn ghost" style={{ flex: 1 }} disabled={busy} onClick={onDecline}>보내기</button>
         </div>
       )}
-      {c.myAccept == null && !c.matched && (
+      {onAccept && (
         <p className="hx-dim" style={{ textAlign: "center", marginTop: 10 }}>수락해도 상대에게 바로 알려지지 않아요</p>
       )}
     </div>
@@ -372,7 +375,19 @@ export default function MatchBox() {
               <button className="hx-btn" style={{ marginTop: 16 }} onClick={() => { ev("match_card_open"); setOpened((o) => ({ ...o, [hero.id]: true })); }}>카드 열어보기</button>
             </div>
           ) : (
-            <OpenCard c={hero} />
+            <OpenCard c={hero} onAccept={() => respond(hero.id, true)} onDecline={() => respond(hero.id, false)} />
+          )
+        ) : cand ? (
+          !opened.cand ? (
+            <div className="hx-card" style={{ textAlign: "center" }}>
+              <span className="hx-timer">자정까지 {timer}</span>
+              <div style={{ display: "flex", justifyContent: "center", margin: "16px 0 12px" }}><CardBack /></div>
+              <div className="hx-h1">월하노인이 인연을 찾았어요</div>
+              <p className="hx-dim" style={{ marginTop: 4 }}>{data.name} 님의 명반과 궁합이 가장 좋은 분이에요</p>
+              <button className="hx-btn" style={{ marginTop: 16 }} onClick={() => { ev("match_card_open"); setOpened((o) => ({ ...o, cand: true })); }}>카드 열어보기</button>
+            </div>
+          ) : (
+            <OpenCard c={{ ...cand, id: "cand" }} onAccept={() => propose(cand.candidateId)} onDecline={() => skip(cand.candidateId)} />
           )
         ) : (
           <div className="hx-card" style={{ textAlign: "center" }}>
@@ -410,7 +425,7 @@ export default function MatchBox() {
                     </div>
                   ) : (
                     <div style={{ marginTop: 8 }}>
-                      {opened[c.id] ? <OpenCard c={c} /> : (
+                      {opened[c.id] ? <OpenCard c={c} onAccept={() => respond(c.id, true)} onDecline={() => respond(c.id, false)} /> : (
                         <button className="hx-btn ghost" style={{ width: "auto", padding: "9px 18px", fontSize: 13 }} onClick={() => setOpened((o) => ({ ...o, [c.id]: true }))}>카드 다시 보기</button>
                       )}
                     </div>

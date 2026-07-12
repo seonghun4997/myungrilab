@@ -544,7 +544,13 @@ function BirthInput({ form, setForm, onDone }) {
         <button className={form.cal === "lunar" ? "on" : ""} onClick={() => setForm({ ...form, cal: "lunar" })}>음력</button>
       </div>
       <input className="field" inputMode="numeric" placeholder="0000년 00월 00일" value={disp}
-        onChange={(e) => setVal(e.target.value)} onKeyDown={(e) => e.key === "Enter" && commit()} autoFocus />
+        onChange={(e) => {
+          const nd = e.target.value.replace(/[^0-9]/g, "");
+          // 지웠는데 포맷 글자(년/월/일)만 지워져 숫자가 그대로면 → 숫자를 하나 지운다
+          if (e.target.value.length < disp.length && nd.length >= digits.length) setVal(digits.slice(0, -1));
+          else setVal(nd);
+        }}
+        onKeyDown={(e) => e.key === "Enter" && commit()} autoFocus />
       {problem && <p className="input-hint">{problem}</p>}
       {preview && <p className="input-hint" style={{ color: "var(--gold)" }}>{preview}</p>}
       {form.cal === "lunar" && (
@@ -583,7 +589,11 @@ function PhoneInput({ form, setForm, onDone }) {
   return (
     <div>
       <input className="field" inputMode="tel" placeholder="010-0000-0000" value={disp}
-        onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/[^0-9]/g, "").slice(0, 11) })}
+        onChange={(e) => {
+          const nd = e.target.value.replace(/[^0-9]/g, "").slice(0, 11);
+          if (e.target.value.length < disp.length && nd.length >= digits.length) setForm({ ...form, phone: digits.slice(0, -1) });
+          else setForm({ ...form, phone: nd });
+        }}
         onKeyDown={(e) => e.key === "Enter" && commit()} autoFocus />
       <button className="next" disabled={!valid} onClick={commit}>다 음</button>
     </div>

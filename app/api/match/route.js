@@ -9,6 +9,18 @@ import { sb } from "../../../lib/supabase";
 import { gonghap, gonghapDetail, displayScore, gradePct } from "../../../lib/gonghap";
 import { MATCH_CONFIG } from "../../../lib/content";
 
+// 저품질 자기소개 필터 — 대충 쓴 프로필은 후보 풀·저장에서 제외
+function isQualityIntro(text) {
+  const t = String(text || "").trim();
+  if (t.length < 10) return false;                                   // "d", "안녕" 수준
+  const chars = [...t.replace(/\s/g, "")];
+  if (new Set(chars).size < 5) return false;                         // "ㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋ", "아아아아아아아아"
+  const jamo = chars.filter((c) => /[ㄱ-ㅎㅏ-ㅣ]/.test(c)).length;   // 미완성 자모(ㅇ,ㅏ 등)
+  if (jamo / chars.length > 0.3) return false;                       // "ㅇㅇㅇㅇ아ㅏ앙어앙ㅏ앙"
+  if (!/[가-힣]{2}/.test(t) && !/[a-zA-Z]{4}/.test(t)) return false; // 온전한 단어가 하나도 없음
+  return true;
+}
+
 // 만 19세 이상만 매칭 가능
 function isAdult(b) {
   if (!b?.y) return false;
@@ -130,6 +142,7 @@ export async function GET(req) {
       for (const cnd of pool || []) {
         if (excluded.has(cnd.id) || skips.has(cnd.id)) continue;
         if (!cnd.birth?.y || !cnd.profile?.avatar) continue;
+        if (!isQualityIntro(cnd.intro)) continue; // 대충 쓴 프로필 제외
         if (me.birth?.gender && cnd.birth?.gender && me.birth.gender === cnd.birth.gender) continue;
         if (!isAdult(cnd.birth)) continue;
         const g = safeGonghap(me.birth, cnd.birth);
@@ -171,9 +184,11 @@ export async function POST(req) {
       region: String(p.region || "").trim().slice(0, 20),
       interests: Array.isArray(p.interests) ? p.interests.slice(0, 5).map((x) => String(x).slice(0, 12)) : [],
     };
-    const upd = { profile: clean, match_optin: true };
     const introClean = String(intro || "").trim().slice(0, 500);
-    if (introClean) upd.intro = introClean;
+    if (!isQualityIntro(introClean)) {
+      return Response.json({ error: "자기소개를 조금만 더 정성껏 적어주세요. 상대가 처음 보는 글이에요 (10자 이상, 온전한 문장으로)." }, { status: 400 });
+    }
+    const upd = { profile: clean, match_optin: true, intro: introClean };
     const { error } = await client.from("leads").update(upd).eq("id", me.id);
     if (error) return Response.json({ error: error.message }, { status: 500 });
     return Response.json({ ok: true });

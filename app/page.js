@@ -763,6 +763,7 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
   const [claiming, setClaiming] = useState(false);
   const [claimErr, setClaimErr] = useState("");
   const [paidClicked, setPaidClicked] = useState(false);
+  const [depositDone, setDepositDone] = useState(false);
   const [copied, setCopied] = useState("");
   const [intro, setIntro] = useState("");
   const [avatar, setAvatar] = useState(null);
@@ -891,13 +892,23 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
             {claiming ? "월하노인이 명반을 읽는 중… (30초~1분)" : "0원 — 감정서 바로 받기"}
           </button>
         ) : (
-        <button
-          className="paybtn"
-          style={{ border: "none", cursor: "pointer" }}
-          onClick={() => { ev("pay_click", { tier: P.id }); setPaidClicked(true); }}
-        >
-          무통장입금으로 결제하기
-        </button>
+        <div style={{ display: "grid", gap: 8 }}>
+          <a
+            className="paybtn"
+            style={{ textDecoration: "none", background: "linear-gradient(135deg,#3182f6,#1b64da)" }}
+            href={tossLink(price)}
+            onClick={() => { ev("pay_click", { tier: P.id, method: "toss" }); setPaidClicked(true); }}
+          >
+            토스로 3초 결제 — 계좌·금액 자동 입력
+          </a>
+          <button
+            className="paybtn"
+            style={{ border: "1px solid rgba(196,176,255,.4)", cursor: "pointer", background: "transparent", color: "var(--tx)" }}
+            onClick={() => { ev("pay_click", { tier: P.id, method: "bank" }); setPaidClicked(true); }}
+          >
+            무통장입금으로 결제
+          </button>
+        </div>
         )}
         {claiming && <ReadingShow />}
         {claimErr && (
@@ -906,26 +917,38 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
 
         {paidClicked && (
           <div className="after-pay">
-            <p className="ap-t">무통장입금 안내</p>
-            <div className="ap-step"><span>①</span> 아래 계좌로 {price.toLocaleString("ko-KR")}원을 입금해주시게</div>
-            <button className="ap-copy" onClick={() => copyText(`${BANK.NAME} ${BANK.ACCOUNT}`, "계좌")}>
-              {BANK.NAME} {BANK.ACCOUNT} (예금주 {BANK.HOLDER}) {copied === "계좌" ? "✓ 복사됨" : "— 눌러서 복사"}
+            <p className="ap-t">입금 정보</p>
+            <button className="ap-copy" onClick={() => copyText(BANK.ACCOUNT.replace(/[^0-9]/g, ""), "계좌")}>
+              {BANK.NAME} {BANK.ACCOUNT} · {BANK.HOLDER} {copied === "계좌" ? "✓ 복사됨" : "⧉ 계좌번호 복사"}
             </button>
-            <div className="ap-step"><span>②</span> 입금자명은 문답에 적으신 성함으로</div>
-            {orderCode && (
-              <p className="mono" style={{ fontSize: 11.5, color: "var(--tx-dim)", margin: "4px 0 8px" }}>
-                이체 메모에 주문코드 <button className="code-chip" onClick={() => copyText(orderCode, "주문코드")}>{orderCode} {copied === "주문코드" ? "✓" : "⧉"}</button> 를 남기면 더 빨라지네.
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "8px 2px 2px" }}>
+              <span style={{ color: "var(--tx-dim)" }}>입금 금액</span><b>{price.toLocaleString("ko-KR")}원</b>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "4px 2px 10px", borderBottom: "1px solid rgba(196,176,255,.18)" }}>
+              <span style={{ color: "var(--tx-dim)" }}>입금자명</span><b>{form.name.trim() || "문답에 적으신 성함"}{orderCode ? ` 또는 ${orderCode}` : ""}</b>
+            </div>
+
+            <p className="ap-t" style={{ marginTop: 14 }}>이후 절차 — 그대는 입금만 하면 되네</p>
+            <div className="ap-step"><span>①</span> 입금 — 위 계좌로 (토스 결제도 같은 계좌로 들어오네)</div>
+            <div className="ap-step"><span>②</span> 확인 — 시스템이 입금 내역을 순차 대조하네 (영업시간 기준 1시간 이내)</div>
+            <div className="ap-step"><span>③</span> 문자 — 남기신 번호 {form.phone ? form.phone.replace(/(\d{3})(\d{3,4})(\d{4})/, "$1-$2-$3") : ""}로 감정서 링크가 자동 발송되네</div>
+
+            {!depositDone ? (
+              <button className="paybtn" style={{ border: "none", cursor: "pointer", marginTop: 10, fontSize: 15 }}
+                onClick={() => { ev("deposit_done_click", { tier: P.id }); setDepositDone(true); }}>
+                입금을 완료했어요
+              </button>
+            ) : (
+              <p style={{ textAlign: "center", fontSize: 13.5, color: "var(--amethyst-hi)", marginTop: 12 }}>
+                접수되었네. 확인되는 대로 문자를 보낼 테니, 이제 문자만 기다리시게.
               </p>
             )}
-            <a className="ap-copy" style={{ textDecoration: "none", textAlign: "center", background: "rgba(49,130,246,.18)", borderColor: "rgba(49,130,246,.5)" }} href={tossLink(price)} onClick={() => ev("toss_click")}>
-              토스로 3초 송금 → <span style={{ fontSize: 10.5, opacity: .8 }}>(토스 앱이 설치된 휴대폰에서 열리네)</span>
-            </a>
-            <div className="ap-step"><span>③</span> 입금 확인 후, 남기신 번호로 감정서 링크를 문자로 보내드리네 (영업시간 기준 1시간 이내)</div>
-            <p className="mono" style={{ fontSize: 10, color: "var(--tx-dim)", marginTop: 8, lineHeight: 1.7 }}>
+            <p className="mono" style={{ fontSize: 10, color: "var(--tx-dim)", marginTop: 10, lineHeight: 1.7 }}>
               {LEGAL.REFUND}<br />링크 문자를 잃어버리면 그 문자에 회신 — 다시 보내드리네.
             </p>
           </div>
         )}
+
 
         {!paidClicked && (
           <>
@@ -945,28 +968,7 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
         </div>
       </div>
 
-      {/* 紅線 매칭 */}
-      <div className="match">
-        <h3><span className="h">紅線</span> {MATCHING.TITLE.replace("紅線 ", "")}</h3>
-        {!adult && (
-          <p className="mf-label" style={{ marginTop: 8 }}>紅線 매칭은 만 19세 이상만 신청할 수 있네.</p>
-        )}
-        <p className="desc">{MATCHING.DESC}</p>
-        <ul>{MATCHING.POINTS.map((p) => <li key={p}>{p}</li>)}</ul>
 
-        {adult && leadToken ? (
-          <div className="mdone-box">
-            <a className="mbox-link" href={`/m/${leadToken}`}>
-              내 인연함 열어보기 →
-              <small>연이 도착하면 이 곳에 카드가 옵니다. 링크를 저장해두시게.</small>
-            </a>
-          </div>
-        ) : adult ? (
-          <p className="mf-label" style={{ textAlign: "center", marginTop: 12 }}>
-            감정서를 받으신 분께는 감정서의 마지막 장에서 인연함이 열립니다.
-          </p>
-        ) : null}
-      </div>
 
       <p className="fine">
         결제 정보를 확인했으며 <a href="/privacy" target="_blank">개인정보 수집 및 이용</a>, 환불 정책에 동의합니다.

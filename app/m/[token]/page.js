@@ -124,13 +124,18 @@ export default function MatchBox() {
     }
   }, [data]); // eslint-disable-line
 
+  const [formErr, setFormErr] = useState("");
   const post = async (body) => {
-    setBusy(true);
+    setBusy(true); setFormErr("");
+    let ok = true;
     try {
-      await fetch("/api/match", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, ...body }) });
-      await load();
-    } catch (e) {}
+      const res = await fetch("/api/match", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, ...body }) });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { setFormErr(d.error || "잠시 후 다시 시도해주세요."); ok = false; }
+      else await load();
+    } catch (e) { setFormErr("네트워크 오류 — 다시 시도해주세요."); ok = false; }
     setBusy(false);
+    return ok;
   };
 
   const respond = (matchId, accept) => { ev(accept ? "match_accept" : "match_decline"); post({ matchId, action: "respond", accept }); };
@@ -139,8 +144,8 @@ export default function MatchBox() {
   const saveKakao = (matchId) => { if (!kakao.trim()) return; ev("match_kakao_set"); post({ matchId, action: "kakao", kakaoId: kakao }); setKakao(""); };
   const saveProfile = async () => {
     ev("match_profile_done");
-    await post({ action: "profile", profile: { avatar, job, region, interests: ints }, intro });
-    setStep(0);
+    const ok = await post({ action: "profile", profile: { avatar, job, region, interests: ints }, intro });
+    if (ok) setStep(0);
   };
   const toggleInt = (t) => setInts((xs) => (xs.includes(t) ? xs.filter((x) => x !== t) : xs.length < 5 ? [...xs, t] : xs));
 
@@ -271,6 +276,7 @@ export default function MatchBox() {
                   placeholder="성격, 취미, 어떤 사람을 만나고 싶은지 편하게 적어주세요 (최소 10자)"
                   value={intro} onChange={(e) => setIntro(e.target.value)} maxLength={500} />
                 <p className="hx-dim" style={{ textAlign: "right", marginTop: 6 }}>{intro.trim().length}/500</p>
+                {formErr && <p style={{ fontSize: 12.5, color: "#e0446a", marginTop: 4, lineHeight: 1.6 }}>{formErr}</p>}
                 <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                   <button className="hx-btn ghost" style={{ flex: 1 }} onClick={() => setStep(2)}>이전</button>
                   <button className="hx-btn" style={{ flex: 2 }} disabled={busy || !avatar || intro.trim().length < 10} onClick={saveProfile}>인연함 열기</button>

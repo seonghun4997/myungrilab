@@ -95,7 +95,7 @@ function ChapterWidgets({ ids, scores, z, gender, name }) {
   });
 }
 
-function ChapterBody({ ch, text, scores, z, gender, name, kakaoUrl }) {
+function ChapterBody({ ch, text, scores, z, gender, name, token }) {
   const parsed = parseChapter(text);
   const W = (ids, key) => <ChapterWidgets key={key} ids={ids} scores={scores} z={z} gender={gender} name={name} />;
   let content;
@@ -138,15 +138,15 @@ function ChapterBody({ ch, text, scores, z, gender, name, kakaoUrl }) {
     <>
       {content}
       {ch.id === "ch08" && (
-        <a href={kakaoUrl} target="_blank" rel="noreferrer" className="btn btn-seal" style={{ marginTop: 18, fontSize: 14.5 }}>
-          紅線 — 이 상대를 자미두수 궁합으로 찾아드립니다
+        <a href={`/m/${token}`} className="btn btn-seal" style={{ marginTop: 18, fontSize: 14.5 }}>
+          紅線 매칭 — 이 상대, 월하노인이 찾아드려요
         </a>
       )}
     </>
   );
 }
 
-export default function ReportPager({ name, birth, token, chapters, scores, z, kakaoUrl }) {
+export default function ReportPager({ name, birth, token, chapters, scores, z }) {
   const [page, setPage] = useState(0);
   const [toc, setToc] = useState(false);
 
@@ -252,7 +252,7 @@ export default function ReportPager({ name, birth, token, chapters, scores, z, k
               <h2 className="display" style={{ fontSize: 19, color: "var(--tx)" }}>{cur.ch.title}</h2>
             </div>
             <ChapterArt theme={cur.ch.id} />
-            <ChapterBody ch={cur.ch} text={chapters[cur.ch.id]} scores={scores} z={z} gender={birth.gender} name={name} kakaoUrl={kakaoUrl} />
+            <ChapterBody ch={cur.ch} text={chapters[cur.ch.id]} scores={scores} z={z} gender={birth.gender} name={name} token={token} />
           </div>
         </div>
       )}
@@ -274,7 +274,7 @@ export default function ReportPager({ name, birth, token, chapters, scores, z, k
             )}
           </div>
           <RateWidget token={token} />
-          <MatchCta kakaoUrl={kakaoUrl} />
+          <MatchCta token={token} />
         </div>
       )}
 

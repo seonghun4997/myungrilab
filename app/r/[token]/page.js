@@ -98,7 +98,6 @@ export default async function ReportPage({ params }) {
           chapters={lead.report.chapters || {}}
           scores={scoresLite}
           z={zLite}
-          kakaoUrl={CONFIG.KAKAO_CHANNEL_URL}
         />
       )}
 
@@ -118,7 +117,7 @@ export default async function ReportPage({ params }) {
               </div>
             );
           })}
-          <MatchCta kakaoUrl={CONFIG.KAKAO_CHANNEL_URL} />
+          <MatchCta token={params.token} />
         </>
       )}
 

@@ -5,7 +5,7 @@
 // ============================================================
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
-import { CONFIG, MATCH_CONFIG, BANK, LEGAL, AVATARS, AVATAR_META, INTERESTS } from "../../../lib/content";
+import { CONFIG, MATCH_CONFIG, BANK, LEGAL, tossLink, AVATARS, AVATAR_META, INTERESTS } from "../../../lib/content";
 import { ev } from "../../../lib/track";
 
 // 3D 아바타 (이미지 실패 시 이모지 폴백이 뒤에 깔려 있음)
@@ -382,9 +382,7 @@ export default function MatchBox() {
               <button className="hx-btn ghost" style={{ marginTop: 10, padding: "10px", fontSize: 13 }} onClick={() => copy(`${BANK.NAME} ${BANK.ACCOUNT}`, "acc")}>
                 {copied === "acc" ? "복사되었어요" : "계좌번호 복사"}
               </button>
-              {!BANK.TOSS_URL.includes("REPLACE") && (
-                <a className="hx-btn" style={{ marginTop: 8, padding: "10px", fontSize: 13, background: "#3182f6" }} href={BANK.TOSS_URL} target="_blank" rel="noopener noreferrer">토스로 3초 송금</a>
-              )}
+              <a className="hx-btn" style={{ marginTop: 8, padding: "10px", fontSize: 13, background: "#3182f6" }} href={tossLink(MATCH_CONFIG.PRICE)}>토스로 3초 송금 (토스 앱 필요)</a>
               <p className="hx-dim" style={{ marginTop: 10, fontSize: 10.5, lineHeight: 1.6 }}>{LEGAL.REFUND}</p>
               <p className="hx-dim" style={{ marginTop: 10, lineHeight: 1.7 }}>
                 입금자명은 <b style={{ color: "#1c1633" }}>문답에 적으신 성함</b>으로 보내주세요.<br />

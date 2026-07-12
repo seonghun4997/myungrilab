@@ -8,7 +8,7 @@ import { computeZiwei, JI, STAR_HANJA } from "../lib/ziwei";
 import {
   CONFIG, ELDER, OFFER, TRUST, REPORT_ITEMS, MATCHING, TIME_SLOTS,
   STAR_SELF, STAR_SPOUSE, STAR_TAG, EMPTY_SPOUSE, SOCIAL_PROOF,
-  AVATARS, AVATAR_META, INTERESTS, MATCH_UI, LANDING, PRODUCTS, REVIEWS, BANK, LEGAL,
+  AVATARS, AVATAR_META, INTERESTS, MATCH_UI, LANDING, PRODUCTS, REVIEWS, BANK, LEGAL, tossLink,
 } from "../lib/content";
 import { track } from "@vercel/analytics";
 import ReadingShow from "./ReadingShow";
@@ -917,11 +917,9 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
                 이체 메모에 주문코드 <button className="code-chip" onClick={() => copyText(orderCode, "주문코드")}>{orderCode} {copied === "주문코드" ? "✓" : "⧉"}</button> 를 남기면 더 빨라지네.
               </p>
             )}
-            {!BANK.TOSS_URL.includes("REPLACE") && (
-              <a className="ap-copy" style={{ textDecoration: "none", textAlign: "center", background: "rgba(49,130,246,.18)", borderColor: "rgba(49,130,246,.5)" }} href={BANK.TOSS_URL} target="_blank" rel="noopener noreferrer" onClick={() => ev("toss_click")}>
-                토스로 3초 송금 →
-              </a>
-            )}
+            <a className="ap-copy" style={{ textDecoration: "none", textAlign: "center", background: "rgba(49,130,246,.18)", borderColor: "rgba(49,130,246,.5)" }} href={tossLink(price)} onClick={() => ev("toss_click")}>
+              토스로 3초 송금 → <span style={{ fontSize: 10.5, opacity: .8 }}>(토스 앱이 설치된 휴대폰에서 열리네)</span>
+            </a>
             <div className="ap-step"><span>③</span> 입금 확인 후, 남기신 번호로 감정서 링크를 문자로 보내드리네 (영업시간 기준 1시간 이내)</div>
             <p className="mono" style={{ fontSize: 10, color: "var(--tx-dim)", marginTop: 8, lineHeight: 1.7 }}>
               {LEGAL.REFUND}<br />링크 문자를 잃어버리면 그 문자에 회신 — 다시 보내드리네.

@@ -9,6 +9,7 @@ import { ev } from "../../../lib/track";
 import MatchCta from "./MatchCta";
 import RateWidget from "./RateWidget";
 import { Bars, Gauge, VsBar, FlowChart, PastTimeline, RarityCard, PersonCard, MonthsCard, CautionList, MyeongbanGrid } from "./widgets";
+import { HeroArt, ChapterArt } from "./art";
 
 function renderText(text) {
   return text.split(/\n{2,}/).map((para, i) => (
@@ -174,7 +175,8 @@ export default function ReportPager({ name, birth, token, chapters, scores, z, k
   // ───── 표지 ─────
   if (cur.t === "intro") {
     return (
-      <div style={{ textAlign: "center", padding: "36px 0 20px" }}>
+      <div style={{ textAlign: "center", padding: "10px 0 20px" }}>
+        <HeroArt />
         <div className="eyebrow" style={{ marginBottom: 26 }}>紫微緣 · 자미두수 정밀 감정서</div>
         <p className="display" style={{ fontSize: 20, lineHeight: 2.05, color: "var(--tx)", marginBottom: 26 }}>
           “어서 오세요, {name}님.<br />{name}님의 자미두수 명반을 펼쳐<br />삶의 큰 흐름을 읽어드릴게요.”
@@ -228,6 +230,7 @@ export default function ReportPager({ name, birth, token, chapters, scores, z, k
       {/* ───── 序 · 명반 ───── */}
       {cur.t === "seo" && (
         <div className="card">
+          <ChapterArt theme="seo" />
           <div className="eyebrow" style={{ marginBottom: 8 }}>序 · 명반을 펼치며</div>
           <p style={{ fontSize: 14.5, color: "var(--tx-dim)", lineHeight: 1.85 }}>
             어서 오세요, {name}님. 자미두수는 태어난 순간의 하늘을 <b style={{ color: "var(--amethyst-hi)" }}>명반</b> 한 장에 펼쳐 읽는 학문입니다.
@@ -248,6 +251,7 @@ export default function ReportPager({ name, birth, token, chapters, scores, z, k
               <div className="mono" style={{ fontSize: 10.5, letterSpacing: ".3em", color: "var(--amethyst-hi)", marginBottom: 4 }}>{cur.ch.no}</div>
               <h2 className="display" style={{ fontSize: 19, color: "var(--tx)" }}>{cur.ch.title}</h2>
             </div>
+            <ChapterArt theme={cur.ch.id} />
             <ChapterBody ch={cur.ch} text={chapters[cur.ch.id]} scores={scores} z={z} gender={birth.gender} name={name} kakaoUrl={kakaoUrl} />
           </div>
         </div>
@@ -264,6 +268,7 @@ export default function ReportPager({ name, birth, token, chapters, scores, z, k
               <div className="mono" style={{ fontSize: 10.5, letterSpacing: ".3em", color: "var(--amethyst-hi)", marginBottom: 4 }}>맺음</div>
               <h2 className="display" style={{ fontSize: 19, color: "var(--tx)" }}>월하노인의 편지</h2>
             </div>
+            <ChapterArt theme="letter" />
             {chapters.letter ? renderText(chapters.letter) : (
               <p style={{ fontSize: 14.5, color: "var(--tx-dim)" }}>여기까지 함께 읽어주셔서 고맙습니다. {name}님의 앞길에 달빛이 함께하기를.</p>
             )}

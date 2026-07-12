@@ -1,14 +1,17 @@
 // ============================================================
-// /api/match — 인연함 (토큰 인증: 본인 lead token)
-// GET ?token= : 내 매칭 카드 목록 (상대는 블라인드 프로필만)
+// /api/match — 인연함 (토큰 인증: 본인 lead token) · v16
+// GET ?token= : 내 매칭 카드 목록 (+궁합 점수 · 이달 성사 수)
 // POST { token, matchId, action:"respond", accept } : 수락/거절
 // POST { token, matchId, action:"kakao", kakaoId } : 카톡ID 등록
+// POST { token, action:"profile", profile, intro } : 매칭 프로필 저장
 // ============================================================
 import { sb } from "../../../lib/supabase";
+import { gonghap, displayScore, gradePct } from "../../../lib/gonghap";
+import KLCmod from "korean-lunar-calendar";
 
 async function findLead(client, token) {
   if (!token || token.length < 10) return null;
-  const { data } = await client.from("leads").select("id, name, birth, profile, intro").eq("token", token).single();
+  const { data } = await client.from("leads").select("id, name, birth, profile, intro, report").eq("token", token).single();
   return data;
 }
 
@@ -16,13 +19,30 @@ function blind(lead) {
   const p = lead?.profile || {};
   const y = lead?.birth?.y;
   return {
-    avatar: p.avatar || "🌙",
+    avatar: p.avatar || "🐶",
     age: y ? new Date().getFullYear() - y + 1 : null, // 세는나이
     job: p.job || "",
     region: p.region || "",
     interests: p.interests || [],
     intro: lead?.intro || "",
   };
+}
+
+function toLunar(b) {
+  const KLC = KLCmod.default || KLCmod;
+  const c = new KLC();
+  if (!c.setSolarDate(b.y, b.m, b.d)) return null;
+  return c.getLunarCalendar();
+}
+
+function safeGonghap(bA, bB) {
+  try {
+    if (!bA || !bB) return null;
+    const lA = toLunar(bA), lB = toLunar(bB);
+    if (!lA || !lB) return null;
+    const g = gonghap(bA, bB, lA, lB);
+    return { note: g.note, grade: g.grade, score: displayScore(g), pct: gradePct(g.grade) };
+  } catch (e) { return null; }
 }
 
 export async function GET(req) {
@@ -49,10 +69,14 @@ export async function GET(req) {
     const myPaid = iAmA ? m.a_paid : m.b_paid;
     const otherPaid = iAmA ? m.b_paid : m.a_paid;
     const matched = m.a_accept === true && m.b_accept === true;
+    const g = safeGonghap(me.birth, other?.birth);
     cards.push({
       id: m.id,
       createdAt: m.created_at,
-      note: m.note,
+      note: g?.note || m.note,
+      grade: g?.grade || null,
+      score: g?.score || null,
+      pct: g?.pct || null,
       other: blind(other),
       myAccept, otherAccept, matched,
       myPaid, otherPaid,
@@ -60,15 +84,54 @@ export async function GET(req) {
       otherKakao: matched && myPaid && otherPaid ? (iAmA ? m.kakao_b : m.kakao_a) : null,
     });
   }
-  return Response.json({ name: me.name, cards, hasProfile: !!me.profile });
+
+  // 이번 달 성사 수 (실제 상호 수락 건)
+  let monthMatched = 0;
+  try {
+    const first = new Date(); first.setDate(1); first.setHours(0, 0, 0, 0);
+    const { count } = await client
+      .from("matches")
+      .select("id", { count: "exact", head: true })
+      .eq("a_accept", true).eq("b_accept", true)
+      .gte("created_at", first.toISOString());
+    monthMatched = count || 0;
+  } catch (e) {}
+
+  return Response.json({
+    name: me.name,
+    cards,
+    hasProfile: !!(me.profile && me.profile.avatar),
+    hasReport: !!me.report,
+    myAvatar: me.profile?.avatar || "🐶",
+    myProfile: me.profile || null,
+    myIntro: me.intro || "",
+    monthMatched,
+  });
 }
 
 export async function POST(req) {
   const client = sb();
   if (!client) return Response.json({ error: "설정 오류" }, { status: 500 });
-  const { token, matchId, action, accept, kakaoId } = await req.json();
+  const { token, matchId, action, accept, kakaoId, profile, intro } = await req.json();
   const me = await findLead(client, token);
   if (!me) return Response.json({ error: "인증 실패" }, { status: 401 });
+
+  // ── 매칭 프로필 저장 (온보딩) ──
+  if (action === "profile") {
+    const p = profile || {};
+    const clean = {
+      avatar: String(p.avatar || "").slice(0, 8),
+      job: String(p.job || "").trim().slice(0, 20),
+      region: String(p.region || "").trim().slice(0, 20),
+      interests: Array.isArray(p.interests) ? p.interests.slice(0, 5).map((x) => String(x).slice(0, 12)) : [],
+    };
+    const upd = { profile: clean, match_optin: true };
+    const introClean = String(intro || "").trim().slice(0, 500);
+    if (introClean) upd.intro = introClean;
+    const { error } = await client.from("leads").update(upd).eq("id", me.id);
+    if (error) return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ ok: true });
+  }
 
   const { data: m } = await client.from("matches").select("*").eq("id", matchId).single();
   if (!m || (m.lead_a !== me.id && m.lead_b !== me.id)) {

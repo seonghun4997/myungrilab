@@ -8,7 +8,7 @@ import { computeZiwei, JI, STAR_HANJA } from "../lib/ziwei";
 import {
   CONFIG, ELDER, OFFER, TRUST, REPORT_ITEMS, MATCHING, TIME_SLOTS,
   STAR_SELF, STAR_SPOUSE, STAR_TAG, EMPTY_SPOUSE, SOCIAL_PROOF,
-  AVATARS, INTERESTS, MATCH_UI, LANDING, PRODUCTS, REVIEWS,
+  AVATARS, AVATAR_META, INTERESTS, MATCH_UI, LANDING, PRODUCTS, REVIEWS,
 } from "../lib/content";
 import { track } from "@vercel/analytics";
 
@@ -965,7 +965,10 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
             <p className="mf-t">가면(아바타)을 고르시게</p>
             <div className="avatar-grid">
               {AVATARS.map((a) => (
-                <button key={a} className={"av" + (avatar === a ? " on" : "")} onClick={() => setAvatar(a)}>{a}</button>
+                <button key={a} className={"av" + (avatar === a ? " on" : "")} onClick={() => setAvatar(a)} aria-label={AVATAR_META[a]?.name || a}
+                  style={AVATAR_META[a] ? { background: AVATAR_META[a].bg, borderRadius: "50%" } : undefined}>
+                  {AVATAR_META[a] ? <img src={AVATAR_META[a].img} alt="" style={{ width: "72%", verticalAlign: "middle" }} onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(a)); }} /> : a}
+                </button>
               ))}
             </div>
             <div className="mf-row">

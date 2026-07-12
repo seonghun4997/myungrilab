@@ -758,6 +758,8 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
   const [coupon, setCoupon] = useState("");
   const [couponApplied, setCouponApplied] = useState(0);
   const [couponMsg, setCouponMsg] = useState("");
+  const [claiming, setClaiming] = useState(false);
+  const [claimErr, setClaimErr] = useState("");
   const [paidClicked, setPaidClicked] = useState(false);
   const [copied, setCopied] = useState("");
   const [intro, setIntro] = useState("");
@@ -793,6 +795,26 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
     const amount = CONFIG.COUPONS[code];
     if (amount) { setCouponApplied(amount); setCouponMsg(`쿠폰 적용 — ${amount.toLocaleString("ko-KR")}원 차감`); ev("coupon_ok"); }
     else { setCouponApplied(0); setCouponMsg("유효하지 않은 코드일세."); }
+  };
+
+  const isFree = couponApplied > 0 && price === 0;
+  const claimFree = async () => {
+    if (!leadId || claiming) return;
+    setClaiming(true); setClaimErr("");
+    ev("free_claim", { tier: P.id });
+    try {
+      const res = await fetch("/api/claim", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ leadId, coupon: coupon.trim() }),
+      });
+      const d = await res.json();
+      if (!res.ok || !d.token) throw new Error(d.error || "발급 실패");
+      window.location.href = `/r/${d.token}`;
+    } catch (e) {
+      setClaiming(false);
+      setClaimErr(e.message || "발급 중 오류가 났어요. 잠시 후 다시 시도해주세요.");
+    }
   };
 
   const copyText = (text, label) => {
@@ -862,6 +884,11 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
           <div className="pr final"><span>최종 결제금액</span><span><span className="pct">-{pct}%</span>{price.toLocaleString("ko-KR")}원</span></div>
         </div>
 
+        {isFree ? (
+          <button className="paybtn" onClick={claimFree} disabled={claiming} style={{ border: "none", cursor: claiming ? "wait" : "pointer", opacity: claiming ? 0.75 : 1 }}>
+            {claiming ? "월하노인이 명반을 읽는 중… (30초~1분)" : "0원 — 감정서 바로 받기"}
+          </button>
+        ) : (
         <a
           className="paybtn"
           href={payUrl}
@@ -875,6 +902,15 @@ function Payment({ leadId, leadToken, birthYear, onBack }) {
         >
           결제하기
         </a>
+        )}
+        {claiming && (
+          <p className="mono" style={{ fontSize: 10.5, color: "var(--amethyst-hi)", textAlign: "center", marginTop: 8 }}>
+            열두 궁의 별을 하나씩 읽고 있어요 — 화면을 닫지 마세요
+          </p>
+        )}
+        {claimErr && (
+          <p className="mono" style={{ fontSize: 10.5, color: "#ff8b98", textAlign: "center", marginTop: 8 }}>{claimErr}</p>
+        )}
         {payUrl.includes("REPLACE") && paidClicked && (
           <p className="mono" style={{ fontSize: 10.5, color: "var(--gold)", textAlign: "center", marginTop: 8 }}>
             [테스트 모드] 결제 링크 미설정 — content.js에 링크를 넣으면 실제 결제 페이지로 이동합니다

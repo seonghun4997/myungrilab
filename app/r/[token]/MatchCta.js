@@ -12,7 +12,7 @@ export default function MatchCta({ kakaoUrl }) {
   const ref = useRef(null);
 
   useEffect(() => {
-    ev("report_view");
+    // report_view는 ReportPager(첫 열람)에서 발화 — 여기서는 완독 근사치만 측정
     const el = ref.current;
     if (!el) return;
     let fired = false;

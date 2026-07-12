@@ -162,6 +162,17 @@ export default function ReportPager({ name, birth, token, chapters, scores, z })
   useEffect(() => { ev("report_view"); }, []);
   useEffect(() => { try { window.scrollTo(0, 0); } catch (e) {} }, [page]);
 
+  // v18.7: 페이지별 이탈 측정 — 표지(intro)/序(seo)/각 장(ch01~)/맺음(fin)을 구분해 발사
+  useEffect(() => {
+    const p = pages[page];
+    if (!p) return;
+    ev("report_page_view", {
+      page: page + 1,
+      total,
+      sect: p.t === "ch" ? p.ch.id : p.t,
+    });
+  }, [page, pages, total]);
+
   const go = (n) => setPage(Math.max(0, Math.min(total - 1, n)));
 
   const pageTitle = (p) => {

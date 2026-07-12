@@ -39,7 +39,7 @@ function captureUtm() {
   } catch (e) { return {}; }
 }
 
-const INPUT_STEPS = ["gender", "birth", "time", "phone", "name", "concern"];
+const INPUT_STEPS = ["gender", "birth", "time", "name", "concern", "phone"]; // v18.7: 전화번호를 맨 뒤로 (병목① 제거)
 
 export default function Home() {
   const [step, setStep] = useState("intro");
@@ -478,7 +478,7 @@ function ElderFlow({ step, form, setForm, goto, onSubmit, farthest = 0 }) {
   const isEdit = farthest > idx; // 뒤로 와서 고치는 중
   const next = () => goto(INPUT_STEPS[isEdit ? farthest : idx + 1]); // 고치고 나면 원래 자리로
   const back = () => goto(idx === 0 ? "intro" : INPUT_STEPS[idx - 1]);
-  const NUM = { gender: "問 一", birth: "問 二", time: "問 三", phone: "問 四", name: "問 五", concern: "問 六" };
+  const NUM = { gender: "問 一", birth: "問 二", time: "問 三", name: "問 四", concern: "問 五", phone: "問 六" };
   const MARK = { gender: "性", birth: "生", time: "時", phone: "絡", name: "名", concern: "憂" };
   const E = ELDER[step];
 
@@ -516,9 +516,9 @@ function ElderFlow({ step, form, setForm, goto, onSubmit, farthest = 0 }) {
         <div className="ask-input">
           {step === "birth" && <BirthInput form={form} setForm={setForm} onDone={next} />}
           {step === "time" && <TimeInput form={form} setForm={setForm} onDone={next} />}
-          {step === "phone" && <PhoneInput form={form} setForm={setForm} onDone={next} />}
           {step === "name" && <NameInput form={form} setForm={setForm} onDone={next} />}
-          {step === "concern" && <ConcernInput form={form} setForm={setForm} onDone={onSubmit} />}
+          {step === "concern" && <ConcernInput form={form} setForm={setForm} onDone={next} />}
+          {step === "phone" && <PhoneInput form={form} setForm={setForm} onDone={onSubmit} />}
         </div>
 
         {rows.length > 0 && (
@@ -630,7 +630,10 @@ function PhoneInput({ form, setForm, onDone }) {
           else setForm({ ...form, phone: nd });
         }}
         onKeyDown={(e) => e.key === "Enter" && commit()} autoFocus />
-      <button className="next" disabled={!valid} onClick={commit}>다 음</button>
+      <p className="input-hint" style={{ color: "var(--tx-dim)" }}>
+        🔒 완성된 감정서 링크를 문자로 보내드리는 데만 씁니다 · 광고·스팸 없음
+      </p>
+      <button className="go-cta" disabled={!valid} onClick={commit}>명반 분석 시작하기 ›</button>
     </div>
   );
 }
@@ -663,10 +666,10 @@ function ConcernInput({ form, setForm, onDone }) {
       />
       <p className="concern-count">{form.concern.length}/200</p>
       <button className="go-cta" onClick={() => { ev("concern_set", { has: !!form.concern.trim() }); onDone(); }}>
-        명반 분석 시작하기 ›
+        다 음 ›
       </button>
       <button className="skip-link" onClick={() => { setForm({ ...form, concern: "" }); ev("concern_skip"); onDone(); }}>
-        딱히 없네, 바로 봐주시게
+        딱히 없네, 다음으로 가주시게
       </button>
     </div>
   );

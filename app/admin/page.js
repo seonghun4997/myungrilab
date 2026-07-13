@@ -107,6 +107,11 @@ export default function Admin() {
       body: JSON.stringify({ id, paid }),
     });
     setLeads((ls) => ls.map((l) => (l.id === id ? { ...l, paid } : l)));
+    // 자동화 체인: 결제 확인 → 리포트 생성 → 문자 발송까지 이 체크 하나로 끝
+    if (paid) {
+      const lead = (leads || []).find((l) => l.id === id);
+      if (lead && !lead.report && !busy[id]) genReport(id);
+    }
   };
 
   const copy = (text, label) => {
@@ -246,7 +251,7 @@ export default function Admin() {
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13, color: l.paid ? "var(--amethyst-hi)" : "var(--tx-dim)" }}>
                 <input type="checkbox" checked={!!l.paid} onChange={(e) => togglePaid(l.id, e.target.checked)} />
-                결제 확인
+                결제 확인{!l.report && " (체크 = 생성·문자 자동)"}
               </label>
               {!l.report ? (
                 <button className="btn btn-seal" style={{ width: "auto", padding: "9px 16px", fontSize: 14 }} disabled={busy[l.id]} onClick={() => genReport(l.id)}>

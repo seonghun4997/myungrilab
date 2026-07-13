@@ -89,6 +89,8 @@ function useMidnightTimer() {
 export default function MatchBox() {
   const { token } = useParams();
   const [data, setData] = useState(null);
+  // 재방문용 — 홈에 다시 오면 "내 인연함 열기"로 바로 올 수 있게 기억해둔다
+  useEffect(() => { try { if (token) localStorage.setItem("jm_my_match", token); } catch (e) {} }, [token]);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [kakao, setKakao] = useState("");

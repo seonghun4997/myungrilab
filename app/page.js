@@ -53,6 +53,7 @@ export default function Home() {
   const [leadToken, setLeadToken] = useState(null);
   const [lastSnap, setLastSnap] = useState(null);
   const [paySnap, setPaySnap] = useState(null); // 미완 결제 복구 스냅샷
+  const [myLinks, setMyLinks] = useState({ r: null, m: null }); // 재방문: 내 감정서/인연함
   const topRef = useRef(null);
 
   useEffect(() => {
@@ -70,6 +71,7 @@ export default function Home() {
         const saved = JSON.parse(f);
         setForm((prev) => ({ ...prev, ...saved, consent: false }));
       }
+      setMyLinks({ r: localStorage.getItem("jm_my_report"), m: localStorage.getItem("jm_my_match") });
     } catch (e) {}
   }, []);
 
@@ -217,7 +219,7 @@ export default function Home() {
   return (
     <main className="phone">
       <div ref={topRef} />
-      {step === "intro" && <Landing onStart={startFunnel} onResume={lastSnap ? resume : null} onResumePay={paySnap ? resumePay : null} />}
+      {step === "intro" && <Landing onStart={startFunnel} onResume={lastSnap ? resume : null} onResumePay={paySnap ? resumePay : null} myReport={myLinks.r} myMatch={myLinks.m} />}
       {INPUT_STEPS.includes(step) && (
         <ElderFlow step={step} form={form} setForm={setForm} goto={goto} onSubmit={submitAll} farthest={farthest} />
       )}
@@ -322,7 +324,7 @@ function CountUp({ end, suffix, duration = 1400 }) {
 }
 
 // ---------------- 0. 롱폼 랜딩 ----------------
-function Landing({ onStart, onResume, onResumePay }) {
+function Landing({ onStart, onResume, onResumePay, myReport, myMatch }) {
   useReveal();
   useSectionTrack();
   return (
@@ -353,6 +355,13 @@ function Landing({ onStart, onResume, onResumePay }) {
             시작됩니다.
           </h1>
           <p className="hero-sub2">당신의 황금기는 이미 명반(命盤)에 적혀 있습니다.</p>
+          {(myReport || myMatch || onResumePay) && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center", marginTop: 18 }}>
+              {myReport && <a className="resume-chip rv" style={{ textDecoration: "none", background: "rgba(155,124,255,.14)", borderColor: "rgba(155,124,255,.55)", color: "var(--amethyst-hi)" }} href={`/r/${myReport}`}>🌙 내 감정서 다시 보기 →</a>}
+              {myMatch && <a className="resume-chip" style={{ textDecoration: "none", background: "rgba(255,107,138,.10)", borderColor: "rgba(255,107,138,.45)", color: "#ff8ba3" }} href={`/m/${myMatch}`}>🧧 내 인연함 열기 →</a>}
+              {onResumePay && <button className="resume-chip" style={{ background: "rgba(255,212,121,.12)", borderColor: "rgba(255,212,121,.5)", color: "var(--gold)" }} onClick={onResumePay}>결제하던 감정 이어서 하기 →</button>}
+            </div>
+          )}
         </div>
 
         <Mountains />
@@ -454,8 +463,9 @@ function Landing({ onStart, onResume, onResumePay }) {
         <h2 className="l-title rv" style={{ fontSize: 30, textAlign: "center" }}>
           {LANDING.FINAL_T.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}
         </h2>
+        {myReport && <a className="resume-chip rv" style={{ textDecoration: "none" }} href={`/r/${myReport}`}>🌙 내 감정서 다시 보기 →</a>}
         {onResumePay && <button className="resume-chip" style={{ background: "rgba(255,212,121,.12)", borderColor: "rgba(255,212,121,.5)", color: "var(--gold)" }} onClick={onResumePay}>결제하던 감정 이어서 하기 →</button>}
-        {onResume && !onResumePay && <button className="resume-chip rv" onClick={onResume}>지난 감정 다시 보기 →</button>}
+        {onResume && !onResumePay && !myReport && <button className="resume-chip rv" onClick={onResume}>지난 감정 다시 보기 →</button>}
         <SiteFooter />
       </section>
 
@@ -1042,7 +1052,7 @@ function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth
               </button>
             ) : (
               <p style={{ textAlign: "center", fontSize: 13.5, color: "var(--amethyst-hi)", marginTop: 12 }}>
-                접수되었네. 확인되는 대로 문자를 보낼 테니, 이제 문자만 기다리시게.
+                접수되었네. 확인되는 대로 감정서 링크를 문자로 보내줌세.<br /><span style={{ color: "var(--tx-dim)", fontSize: 12 }}>확인은 매일 오전 9시~밤 12시, 보통 1시간 안일세. 심야 입금은 다음 날 오전 9시부터 순서대로 확인하네.</span>
               </p>
             )}
             <p className="mono" style={{ fontSize: 10, color: "var(--tx-dim)", marginTop: 10, lineHeight: 1.7 }}>

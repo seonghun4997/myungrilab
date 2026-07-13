@@ -160,6 +160,8 @@ export default function ReportPager({ name, birth, token, chapters, scores, z })
   const cur = pages[page] || pages[0];
 
   useEffect(() => { ev("report_view"); }, []);
+  // 재방문용 — 이 기기에서 홈에 다시 오면 "내 감정서 다시 보기"로 바로 올 수 있게 기억해둔다
+  useEffect(() => { try { if (token) localStorage.setItem("jm_my_report", token); } catch (e) {} }, [token]);
   useEffect(() => { try { window.scrollTo(0, 0); } catch (e) {} }, [page]);
 
   // v18.7: 페이지별 이탈 측정 — 표지(intro)/序(seo)/각 장(ch01~)/맺음(fin)을 구분해 발사

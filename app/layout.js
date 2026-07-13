@@ -2,6 +2,10 @@ import "./globals.css";
 import { Analytics } from "@vercel/analytics/react";
 import { CONFIG } from "../lib/content";
 
+export const viewport = {
+  themeColor: "#07071a",
+};
+
 export const metadata = {
   metadataBase: new URL("https://myungrilab.vercel.app"), // 도메인 연결 시 이 주소만 교체
   title: `${CONFIG.BRAND} — ${CONFIG.TAGLINE}`,
@@ -13,7 +17,6 @@ export const metadata = {
     locale: "ko_KR",
     siteName: CONFIG.BRAND,
   },
-  themeColor: "#07071a",
 };
 
 export default function RootLayout({ children }) {

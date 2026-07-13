@@ -871,7 +871,6 @@ function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth
   const price = Math.max(0, P.price - couponApplied);
   const discount = P.original - P.price;
   const pct = Math.round((discount / P.original) * 100);
-  const payUrl = P.url || CONFIG.PAYMENT_URL;
 
   const age = birthYear ? new Date().getFullYear() - birthYear : null;
   const adult = age == null || age >= 19;

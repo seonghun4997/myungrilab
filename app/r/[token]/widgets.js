@@ -154,7 +154,7 @@ export function MonthsCard({ months }) {
 
 export function CautionList({ years }) {
   if (!years.length)
-    return <p style={{ fontSize: 13.5, color: DIM, margin: "12px 0" }}>다가올 10년 안에 명·재·관·부처의 핵심 자리를 치는 큰 화기가 없습니다 — 드물게 순한 흐름이에요.</p>;
+    return <p style={{ fontSize: 13.5, color: DIM, margin: "12px 0" }}>다가올 10년 안에 인생의 핵심 자리(나·돈·일·배우자)를 흔드는 큰 화기(발목을 잡는 기운)가 없습니다 — 드물게 순한 흐름이에요.</p>;
   return (
     <div style={{ margin: "14px 0" }}>
       {years.map((y) => (

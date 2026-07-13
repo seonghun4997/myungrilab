@@ -699,7 +699,7 @@ function Diagnosis({ z, name, timeUnknown, onPay }) {
   const myeong = z.palaceAt("명궁");
   const effM = z.effectiveMajors(myeong);
   const mainStar = effM.stars[0];
-  const selfText = mainStar ? STAR_SELF[mainStar] : "명궁이 비어 맞은편 별을 빌려 쓰는 명 — 환경과 시기가 남들보다 크게 작용하는, 열린 그릇입니다.";
+  const selfText = mainStar ? STAR_SELF[mainStar] : "운명의 중심 자리(명궁)가 비어 있어 맞은편 별을 빌려 쓰는 명 — 정해진 틀이 없어, 환경과 시기가 남들보다 크게 작용하는 열린 그릇입니다.";
 
   const jaebaek = z.effectiveMajors(z.palaceAt("재백궁")).stars;
   const buche = z.effectiveMajors(z.palaceAt("부처궁"));
@@ -720,23 +720,23 @@ function Diagnosis({ z, name, timeUnknown, onPay }) {
 
       <p className="whisper">{name ? `${name}...` : "허어..."}<br />별이 크게 움직이는 명이군.</p>
       {timeUnknown && (
-        <p className="tu-note">※ 시진 미상 — 정오(午時) 기준 추정 명반일세. 태어난 시를 확인해 오면 카카오톡으로 다시 봐줌세.</p>
+        <p className="tu-note">※ 태어난 시를 몰라 정오 기준으로 본 추정 명반일세. 시를 확인해 오면 카카오톡으로 다시 봐줌세.</p>
       )}
 
       {/* 명궁 — 대공개 */}
       <div className="gcard">
-        <h3><span className="gh">命</span> 그대의 명궁(命宮)에 앉은 별</h3>
+        <h3><span className="gh">命</span> 내 운명의 중심 자리 — 명궁(命宮)의 별</h3>
         <div className="star-reveal">
           <span className="orbit" aria-hidden="true" />
           <div className="star-hanja" style={effM.stars.length > 1 ? { fontSize: 52 } : {}}>
             {effM.stars.map((s) => STAR_HANJA[s]).join("·") || "空"}
           </div>
-          <div className="star-name">{effM.stars.map((s) => s + "성").join(" · ") || "공궁(空宮)"}{effM.borrowed && effM.stars.length > 0 ? " — 차성(借星)" : ""}</div>
+          <div className="star-name">{effM.stars.map((s) => s + "성").join(" · ") || "공궁(空宮)"}{effM.borrowed && effM.stars.length > 0 ? " — 빌려온 별" : ""}</div>
           {mainStar && <div className="star-tag">{STAR_TAG[mainStar]}</div>}
         </div>
         <p className="open-tx">{firstSentence(selfText)}</p>
         <p className="blur-tx" aria-hidden="true">
-          {selfText.slice(firstSentence(selfText).length)} 이 별이 그대의 재물·직업·인연에서 각각 어떤 얼굴로 나타나는지, 12궁 전체를 펴면 전부 드러납니다.
+          {selfText.slice(firstSentence(selfText).length)} 이 별이 그대의 재물·직업·인연에서 각각 어떤 얼굴로 나타나는지, 인생 12개 영역을 전부 펴면 드러납니다.
         </p>
         <div className="lockline">🔒 정식 감정서에서 개봉</div>
       </div>
@@ -750,24 +750,24 @@ function Diagnosis({ z, name, timeUnknown, onPay }) {
           <p className="fate-year">그대의 다음 대운 — <span className="yr">{nd.startYear}년</span> 시작</p>
         )}
         <p className="blur-tx" aria-hidden="true">
-          그 10년의 주제가 무엇인지, 황금기인지 시련기인지, 그 전환기 1~2년을 어떻게 건너야 하는지 — 대한(大限) 연대표는 정식 감정서의 運 편에서 연도별로 다룹니다.
+          그 10년의 주제가 무엇인지, 황금기인지 시련기인지, 갈아타는 1~2년을 어떻게 건너야 하는지 — 10년 대운 연대표는 정식 감정서의 運 편에서 연도별로 다룹니다.
         </p>
         <div className="lockline">🔒 정식 감정서에서 개봉</div>
       </div>
 
       {/* 재물 */}
       <div className="gcard">
-        <h3><span className="gh">財</span> 재물운 — 재백궁의 별</h3>
-        <p className="open-tx">그대의 재백궁(財帛宮)에는 <b>{jaebaek.map((s) => s + "성").join("·") || "빌려 쓰는 별"}</b>이 앉아 있습니다.</p>
+        <h3><span className="gh">財</span> 재물운 — 돈을 담는 자리(재백궁)의 별</h3>
+        <p className="open-tx">그대의 돈을 담는 자리, 재백궁(財帛宮)에는 <b>{jaebaek.map((s) => s + "성").join("·") || "빌려 쓰는 별"}</b>이 앉아 있습니다.</p>
         <p className="blur-tx" aria-hidden="true">
-          이 별이 말하는 돈 버는 방식과 그릇, 돈이 새는 전형적인 경로, 그리고 화록·화기가 재물 라인에 걸렸는지 — 재물이 들어오는 길과 새는 길은 정식 감정서에서 낱낱이 다룹니다.
+          이 별이 말하는 돈 버는 방식과 그릇, 돈이 새는 전형적인 경로, 그리고 복을 실어오는 기운(화록)과 새게 만드는 기운(화기)이 재물 자리에 걸렸는지 — 들어오는 길과 새는 길을 정식 감정서에서 낱낱이 다룹니다.
         </p>
         <div className="lockline">🔒 정식 감정서에서 개봉</div>
       </div>
 
       {/* 애정 */}
       <div className="gcard">
-        <h3><span className="gh">愛</span> 애정운 — 부처궁의 별</h3>
+        <h3><span className="gh">愛</span> 애정운 — 배우자 자리(부처궁)의 별</h3>
         <p className="open-tx">{firstSentence(spouseText)}</p>
         <p className="blur-tx" aria-hidden="true">
           {spouseText.slice(firstSentence(spouseText).length)} 이 인연을 만나는 시기와 조심할 함정까지.
@@ -779,7 +779,7 @@ function Diagnosis({ z, name, timeUnknown, onPay }) {
       <div className="gcard">
         <h3><span className="gh">忌</span> 그대의 운을 흔드는 별</h3>
         <p className="blur-tx" aria-hidden="true">
-          {giStar ? "그대의 명반에는 화기(化忌)가 붙은 별이 하나 있습니다. 그 별이 어느 궁에 앉아 어떤 영역을 흔드는지, 발동을 다루는 법은..." : "명반에서 기운이 꺾이는 자리가 어디인지, 그 자리를 다루는 법은..."}
+          {giStar ? "그대의 명반에는 발목을 잡는 기운, 화기(化忌)가 붙은 별이 하나 있습니다. 그 별이 인생 어느 영역을 흔드는지, 그 기운이 발동할 때 다루는 법은..." : "명반에서 기운이 꺾이는 자리가 어디인지, 그 자리를 다루는 법은..."}
         </p>
         <div className="lockline">🔒 정식 감정서에서 개봉</div>
       </div>

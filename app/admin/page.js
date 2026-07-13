@@ -6,9 +6,25 @@
 import { useState } from "react";
 import { CONFIG } from "../../lib/content";
 
+// 검색 — 이름 / 전화번호 / 주문코드(토큰 앞 6자리)
+function filterLeads(leads, q) {
+  const norm = (q || "").trim().toLowerCase();
+  if (!norm) return leads;
+  const digits = norm.replace(/[^0-9]/g, "");
+  return leads.filter((l) => {
+    const code = (l.token || "").slice(0, 6).toLowerCase();
+    return (
+      (l.name || "").toLowerCase().includes(norm) ||
+      (digits.length >= 2 && (l.phone || "").includes(digits)) ||
+      (norm.length >= 2 && code.includes(norm))
+    );
+  });
+}
+
 export default function Admin() {
   const [key, setKey] = useState("");
   const [leads, setLeads] = useState(null);
+  const [q, setQ] = useState("");
   const [busy, setBusy] = useState({});
   const [msg, setMsg] = useState("");
   const [sel, setSel] = useState([]);      // 매칭용 선택 (최대 2)
@@ -76,7 +92,7 @@ export default function Admin() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "생성 실패");
-      setLeads((ls) => ls.map((l) => (l.id === id ? { ...l, token: data.token } : l)));
+      setLeads((ls) => ls.map((l) => (l.id === id ? { ...l, token: data.token, report: l.report || { __done: true } } : l)));
       setMsg(data.reused ? "기존 리포트 재사용" : `리포트 생성 완료${data.failed?.length ? ` (실패 섹션: ${data.failed.join(",")})` : ""}`);
     } catch (e) {
       setMsg(e.message);
@@ -158,8 +174,9 @@ export default function Admin() {
 
       {leads && matches !== null && (() => {
         const todo = {
-          입금대기: leads.filter((l) => !l.paid && !l.token).length,
-          리포트생성: leads.filter((l) => l.paid && !l.token).length,
+          입금주장: leads.filter((l) => l.pay_claim && !l.paid).length,
+          입금대기: leads.filter((l) => !l.paid && !l.report).length,
+          리포트생성: leads.filter((l) => l.paid && !l.report).length,
           문자발송_성사: (matches || []).filter((m) => m.a_accept === true && m.b_accept === true && !(m.kakao_a && m.kakao_b)).length,
           응답대기_카드: (matches || []).filter((m) => m.a_accept == null || m.b_accept == null).length,
         };
@@ -167,6 +184,7 @@ export default function Admin() {
           <div className="card" style={{ marginBottom: 16, border: "1px solid rgba(255,212,121,.4)" }}>
             <p className="mono" style={{ fontSize: 10.5, letterSpacing: ".2em", color: "var(--gold)", marginBottom: 8 }}>오늘 할 일</p>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 13.5 }}>
+              <span>💰 입금했다는 분 <b style={{ color: todo.입금주장 ? "#ffd479" : "var(--tx-dim)" }}>{todo.입금주장}</b></span>
               <span>입금 확인 대기 <b style={{ color: todo.입금대기 ? "var(--gold)" : "var(--tx-dim)" }}>{todo.입금대기}</b></span>
               <span>리포트 생성할 것 <b style={{ color: todo.리포트생성 ? "var(--gold)" : "var(--tx-dim)" }}>{todo.리포트생성}</b></span>
               <span>성사 문자 보낼 것 <b style={{ color: todo.문자발송_성사 ? "var(--thread)" : "var(--tx-dim)" }}>{todo.문자발송_성사}</b></span>
@@ -178,14 +196,36 @@ export default function Admin() {
       })()}
       {leads && leads.length === 0 && <p style={{ color: "var(--tx-dim)" }}>아직 들어온 디비가 없습니다.</p>}
 
-      {leads && leads.map((l) => {
+      {leads && leads.length > 0 && (
+        <input
+          className="field"
+          placeholder="🔍 검색 — 이름 · 전화번호 · 주문코드"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          style={{ marginBottom: 12 }}
+        />
+      )}
+      {leads && filterLeads(leads, q).map((l) => {
         const b = l.birth || {};
         return (
           <div className="card" key={l.id} style={{ marginBottom: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
               <div>
                 <input type="checkbox" checked={sel.includes(l.id)} onChange={() => toggleSel(l.id)} style={{ marginRight: 8 }} />
-                <b style={{ fontSize: 17, color: "var(--amethyst-hi)" }}>{l.name}</b>{l.match_optin && <span className="mono" style={{ fontSize: 10, marginLeft: 8, color: "var(--thread)", border: "1px solid var(--thread)", borderRadius: 6, padding: "1px 6px" }}>紅線신청</span>}
+                <b style={{ fontSize: 17, color: "var(--amethyst-hi)" }}>{l.name}</b>
+                {l.token && (
+                  <button className="mono" onClick={() => copy(l.token.slice(0, 6).toUpperCase(), "주문코드")}
+                    style={{ fontSize: 10.5, marginLeft: 8, color: "var(--gold)", border: "1px solid rgba(255,212,121,.5)", background: "transparent", borderRadius: 6, padding: "1px 6px", cursor: "pointer" }}>
+                    {l.token.slice(0, 6).toUpperCase()}
+                  </button>
+                )}
+                {l.pay_claim && !l.paid && (
+                  <span className="mono" style={{ fontSize: 10.5, marginLeft: 6, color: "#ffd479", border: "1px solid #ffd479", borderRadius: 6, padding: "1px 6px" }}>
+                    💰 {l.pay_claim.method === "toss" ? "토스" : "무통장"} {(Number(l.pay_claim.price) || 0).toLocaleString("ko-KR")}원
+                    {l.pay_claim.at ? ` · ${new Date(l.pay_claim.at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}` : ""}
+                  </span>
+                )}
+                {l.match_optin && <span className="mono" style={{ fontSize: 10, marginLeft: 8, color: "var(--thread)", border: "1px solid var(--thread)", borderRadius: 6, padding: "1px 6px" }}>紅線신청</span>}
                 <span className="mono" style={{ fontSize: 13, marginLeft: 10, color: "var(--tx)" }}>{l.phone}</span>
               </div>
               <span className="mono" style={{ fontSize: 11, color: "var(--tx-dim)" }}>
@@ -208,7 +248,7 @@ export default function Admin() {
                 <input type="checkbox" checked={!!l.paid} onChange={(e) => togglePaid(l.id, e.target.checked)} />
                 결제 확인
               </label>
-              {!l.token ? (
+              {!l.report ? (
                 <button className="btn btn-seal" style={{ width: "auto", padding: "9px 16px", fontSize: 14 }} disabled={busy[l.id]} onClick={() => genReport(l.id)}>
                   {busy[l.id] ? "생성 중… (30초)" : "리포트 생성"}
                 </button>

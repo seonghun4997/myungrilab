@@ -3,6 +3,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { CONFIG } from "../lib/content";
 
 export const metadata = {
+  metadataBase: new URL("https://myungrilab.vercel.app"), // 도메인 연결 시 이 주소만 교체
   title: `${CONFIG.BRAND} — ${CONFIG.TAGLINE}`,
   description: `${CONFIG.CLAIM}. 자미두수 부처궁(夫妻宮)으로 정해진 짝의 모습과 인연의 해를 감정합니다.`,
   openGraph: {

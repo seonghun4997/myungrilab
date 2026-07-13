@@ -839,7 +839,23 @@ function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth
   const [region, setRegion] = useState("");
   const [ints, setInts] = useState([]);
   const [matchDone, setMatchDone] = useState(false);
+  const [isMobile, setIsMobile] = useState(true); // 기본 true — 서버 렌더 시 토스 버튼 유지, PC 확인 후 전환
   useEffect(() => { ev("pay_view"); }, []);
+  useEffect(() => {
+    try { setIsMobile(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)); } catch (e) {}
+  }, []);
+
+  // 입금 주장 → DB 기록 (어드민 💰 대조 목록). 토스 클릭·입금완료 클릭 모두 즉시 접수.
+  const sendPayClaim = (method) => {
+    if (!leadId) return;
+    try {
+      fetch("/api/lead", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: leadId, payClaim: { tier: P.id, price, method } }),
+      });
+    } catch (e) {}
+  };
 
   const P = PRODUCTS[prodIdx];
   const price = Math.max(0, P.price - couponApplied);
@@ -967,6 +983,7 @@ function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth
           </button>
         ) : (
         <div style={{ display: "grid", gap: 8 }}>
+          {isMobile ? (
           <a
             className="paybtn"
             style={{ textDecoration: "none", background: "linear-gradient(135deg,#3182f6,#1b64da)" }}
@@ -975,11 +992,17 @@ function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth
               e.preventDefault(); // 페이지를 떠나지 않는다 — 토스 앱만 위로 뜨고, 돌아오면 이 화면 그대로
               ev("pay_click", { tier: P.id, method: "toss" });
               setPaidClicked(true);
+              sendPayClaim("toss"); // 토스 탭도 즉시 접수 처리
               try { window.location.href = tossLink(price); } catch (err) {}
             }}
           >
             토스로 3초 결제 — 계좌·금액 자동 입력
           </a>
+          ) : (
+          <p className="mono" style={{ fontSize: 11, color: "var(--tx-dim)", textAlign: "center", margin: "2px 0" }}>
+            📱 토스 앱 3초 결제는 휴대폰으로 접속하면 나타나네 — PC에서는 아래 무통장입금을 쓰시게
+          </p>
+          )}
           <button
             className="paybtn"
             style={{ border: "1px solid rgba(196,176,255,.4)", cursor: "pointer", background: "transparent", color: "var(--tx)" }}
@@ -1014,7 +1037,7 @@ function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth
 
             {!depositDone ? (
               <button className="paybtn" style={{ border: "none", cursor: "pointer", marginTop: 10, fontSize: 15 }}
-                onClick={() => { ev("deposit_done_click", { tier: P.id }); setDepositDone(true); }}>
+                onClick={() => { ev("deposit_done_click", { tier: P.id }); sendPayClaim("bank"); setDepositDone(true); }}>
                 입금을 완료했어요
               </button>
             ) : (

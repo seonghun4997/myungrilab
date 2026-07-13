@@ -34,7 +34,7 @@ export async function GET(req) {
   ] = await Promise.all([
     cnt(client, "leads"),
     cnt(client, "leads", (q) => q.eq("paid", true)),
-    cnt(client, "leads", (q) => q.not("token", "is", null)),
+    cnt(client, "leads", (q) => q.not("report", "is", null)),
     cnt(client, "leads", (q) => q.not("viewed_at", "is", null)),
     cnt(client, "leads", (q) => q.eq("match_optin", true)),
     cnt(client, "matches"),

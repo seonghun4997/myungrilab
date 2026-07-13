@@ -32,7 +32,7 @@ export async function POST(req) {
 
 export async function PATCH(req) {
   try {
-    const { id, quizHits, intro, matchOptin, profile, name, phone, birth, salNames, salCount } = await req.json();
+    const { id, quizHits, intro, matchOptin, profile, name, phone, birth, salNames, salCount, payClaim } = await req.json();
     const client = sb();
     if (!client || !id) return Response.json({ ok: false });
     const upd = {};
@@ -45,6 +45,17 @@ export async function PATCH(req) {
     if (intro !== undefined) upd.intro = String(intro).slice(0, 500);
     if (matchOptin !== undefined) upd.match_optin = !!matchOptin;
     if (profile !== undefined) upd.profile = profile;
+    if (payClaim !== undefined) {
+      // 입금 주장 기록 — 어드민 💰 대조용. 시각은 서버 기준으로 찍는다.
+      upd.pay_claim = payClaim
+        ? {
+            tier: Number(payClaim.tier) || null,
+            price: Number(payClaim.price) || 0,
+            method: payClaim.method === "toss" ? "toss" : "bank",
+            at: new Date().toISOString(),
+          }
+        : null;
+    }
     if (Object.keys(upd).length === 0) return Response.json({ ok: false });
     const { error } = await client.from("leads").update(upd).eq("id", id);
     if (error) { console.error(error.message); return Response.json({ ok: false }); }

@@ -242,7 +242,7 @@ export default function Home() {
       <div ref={topRef} />
       {step === "intro" && <Landing onStart={startFunnel} onResume={lastSnap ? resume : null} onResumePay={paySnap ? resumePay : null} myReport={myLinks.r} myMatch={myLinks.m} />}
       {INPUT_STEPS.includes(step) && (
-        <ElderFlow step={step} form={form} setForm={setForm} goto={goto} onSubmit={submitAll} farthest={farthest} />
+        <ElderFlow hongseon={hongseon} step={step} form={form} setForm={setForm} goto={goto} onSubmit={submitAll} farthest={farthest} />
       )}
       {step === "checking" && <Checking />}
       {step === "diag" && ziwei && <Diagnosis z={ziwei} name={form.name} timeUnknown={form.timeUnknown} onPay={() => goto("pay")} />}
@@ -504,7 +504,7 @@ function Landing({ onStart, onResume, onResumePay, myReport, myMatch }) {
 }
 
 // ---------------- 1. 노인 문답 ----------------
-function ElderFlow({ step, form, setForm, goto, onSubmit, farthest = 0 }) {
+function ElderFlow({ step, form, setForm, goto, onSubmit, farthest = 0, hongseon = false }) {
   const idx = INPUT_STEPS.indexOf(step);
   const isEdit = farthest > idx; // 뒤로 와서 고치는 중
   const next = () => goto(INPUT_STEPS[isEdit ? farthest : idx + 1]); // 고치고 나면 원래 자리로

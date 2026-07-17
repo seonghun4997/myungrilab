@@ -468,10 +468,18 @@ export default function Admin() {
                     <label style={{ display: "flex", gap: 5, alignItems: "center" }}>
                       <input type="checkbox" checked={!!m.b_paid} onChange={(e) => togglePaidM(m.id, "bPaid", e.target.checked)} /> B 성사비
                     </label>
-                    <a className="mono" style={{ fontSize: 11, color: "var(--amethyst-hi)", textDecoration: "underline" }}
-                      href={smsHref(m.aPhone, (m.a_accept && m.b_accept ? matchedMsg(m.aName, m.aToken) : cardMsg(m.aName, m.aToken)))}>A 문자↗</a>
-                    <a className="mono" style={{ fontSize: 11, color: "var(--amethyst-hi)", textDecoration: "underline" }}
-                      href={smsHref(m.bPhone, (m.a_accept && m.b_accept ? matchedMsg(m.bName, m.bToken) : cardMsg(m.bName, m.bToken)))}>B 문자↗</a>
+                    {[["A", m.aPhone, m.aName, m.aToken], ["B", m.bPhone, m.bName, m.bToken]].map(([side, ph, nm, tk]) => (
+                      <button key={side} className="mono" style={{ fontSize: 11, color: "var(--amethyst-hi)", textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                        onClick={async () => {
+                          const body = m.a_accept && m.b_accept ? matchedMsg(nm, tk) : cardMsg(nm, tk);
+                          if (!window.confirm(`${side}측 ${nm}(${ph})에게 서버에서 문자를 보낼까요?`)) return;
+                          try {
+                            const r = await fetch("/api/admin/send", { method: "POST", headers: { "content-type": "application/json", "x-admin-key": key }, body: JSON.stringify({ to: ph, text: body }) });
+                            const j = await r.json();
+                            window.alert(r.ok ? `${side} 발송 완료 — 실장부 확인` : "실패: " + (j.error || r.status));
+                          } catch (e) { window.alert("실패: " + e.message); }
+                        }}>{side} 서버발송📨</button>
+                    ))}
                     {m.kakao_a && <span className="mono" style={{ fontSize: 11, color: "var(--gold)" }}>A카톡:{m.kakao_a}</span>}
                     {m.kakao_b && <span className="mono" style={{ fontSize: 11, color: "var(--gold)" }}>B카톡:{m.kakao_b}</span>}
                   </div>

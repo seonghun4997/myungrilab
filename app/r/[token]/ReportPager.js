@@ -96,6 +96,31 @@ function ChapterWidgets({ ids, scores, z, gender, name }) {
   });
 }
 
+// v25.4: 본문 가독 리듬 — 소제목 사이 홍선 매듭 디바이더 + 장 중간 아씨 삽화 1컷
+const CH_CUT = { seo: "omg", ch01: "hero", ch03: "ask", ch05: "wait", ch07: "lost", ch08: "thread", ch10: "hero", ch11: "wait", ch13: "write" };
+const CUT_ROTATE = ["ask", "wait", "lost", "omg", "hero", "thread"];
+function chapterCut(id) {
+  if (CH_CUT[id]) return CH_CUT[id];
+  let h = 0; for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) % 997;
+  return CUT_ROTATE[h % CUT_ROTATE.length];
+}
+const ThreadDivider = () => (
+  <div aria-hidden="true" style={{ textAlign: "center", margin: "26px 0 2px" }}>
+    <svg width="120" height="18" viewBox="0 0 120 18">
+      <path d="M4 10 C 30 2, 50 16, 60 9 C 70 2, 90 16, 116 8" stroke="rgba(255,92,122,.55)" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+      <circle cx="60" cy="9" r="2.6" fill="none" stroke="rgba(255,212,121,.7)" strokeWidth="1.3" />
+    </svg>
+  </div>
+);
+const InlineCut = ({ id }) => (
+  <div style={{ margin: "26px 0 6px" }}>
+    <img src={`/char/${chapterCut(id)}.webp`} alt="" width={760} height={1010}
+      style={{ display: "block", width: "min(62%, 260px)", height: "auto", margin: "0 auto",
+        WebkitMaskImage: "radial-gradient(ellipse 62% 62% at 50% 42%, black 46%, transparent 94%)",
+        maskImage: "radial-gradient(ellipse 62% 62% at 50% 42%, black 46%, transparent 94%)" }} />
+  </div>
+);
+
 function ChapterBody({ ch, text, scores, z, gender, name, token }) {
   const parsed = parseChapter(text);
   const W = (ids, key) => <ChapterWidgets key={key} ids={ids} scores={scores} z={z} gender={gender} name={name} />;
@@ -112,13 +137,15 @@ function ChapterBody({ ch, text, scores, z, gender, name, token }) {
     const out = [];
     parsed.subs.forEach((s, i) => {
       if (s.title) {
+        if (i > 0) out.push(<ThreadDivider key={"dv" + i} />);
         out.push(
-          <h3 key={"t" + i} className="display" style={{ fontSize: 16.5, color: "var(--amethyst-hi)", margin: (i ? 30 : 6) + "px 0 12px" }}>
+          <h3 key={"t" + i} className="display" style={{ fontSize: 16.5, color: "var(--amethyst-hi)", margin: (i ? 12 : 6) + "px 0 12px" }}>
             {s.title}
           </h3>
         );
       }
       if (s.body) out.push(<div key={"b" + i}>{renderText(s.body)}</div>);
+      if (i === 1) out.push(<InlineCut key="cut" id={ch.id} />);
       ch.widget.forEach((wid, k) => {
         if (wpos[k] === i + 1) out.push(W([wid], "w" + k));
       });
@@ -308,7 +335,11 @@ export default function ReportPager({ name, birth, token, chapters, scores, z })
           <div className="card" id="letter">
             <div style={{ marginBottom: 12 }}>
               <div className="mono" style={{ fontSize: 10.5, letterSpacing: ".3em", color: "var(--amethyst-hi)", marginBottom: 4 }}>맺음</div>
-              <h2 className="display" style={{ fontSize: 19, color: "var(--tx)" }}>홍서 아씨의 편지</h2>
+              <img src="/char/write.webp" alt="" width={1456} height={1092}
+            style={{ display: "block", width: "min(78%, 340px)", height: "auto", margin: "0 auto 4px",
+              WebkitMaskImage: "radial-gradient(ellipse 64% 64% at 50% 44%, black 48%, transparent 95%)",
+              maskImage: "radial-gradient(ellipse 64% 64% at 50% 44%, black 48%, transparent 95%)" }} />
+          <h2 className="display" style={{ fontSize: 19, color: "var(--tx)" }}>홍서 아씨의 편지</h2>
             </div>
             <ChapterArt theme="letter" />
             {chapters.letter ? renderText(chapters.letter) : (

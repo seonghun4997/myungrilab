@@ -370,6 +370,14 @@ export async function POST(req) {
     const upd = iAmA ? { kakao_a: clean } : { kakao_b: clean };
     const { error } = await client.from("matches").update(upd).eq("id", matchId);
     if (error) return Response.json({ error: error.message }, { status: 500 });
+    // UX2.0: 이 등록으로 "서로의 카톡"이 완성되는 순간 — 양쪽에 즉시 알림 (기다림 없는 교환)
+    const otherKakaoAlready = iAmA ? m.kakao_b : m.kakao_a;
+    const isMatched = m.a_accept === true && m.b_accept === true;
+    if (isMatched && otherKakaoAlready) {
+      const origin = new URL(req.url).origin;
+      const { data: both } = await client.from("leads").select("id, name, phone, token").in("id", [m.lead_a, m.lead_b]);
+      for (const l of both || []) await smsSafe(l.phone, MSG.kakaoOpen(l.name, origin, l.token));
+    }
     return Response.json({ ok: true });
   }
   return Response.json({ error: "알 수 없는 동작" }, { status: 400 });

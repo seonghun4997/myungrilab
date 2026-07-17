@@ -12,7 +12,7 @@ export const metadata = {
   description: `${CONFIG.CLAIM}. 재물·직업·연애·건강 — 인생 12개 영역과 10년 대운의 흐름을 자미두수 명반으로 감정합니다.`,
   openGraph: {
     title: `${CONFIG.BRAND}(${CONFIG.BRAND_HANJA}) — ${CONFIG.TAGLINE}`,
-    description: "내 인생의 대운은 언제 시작될까. 돈·일·사랑·건강, 12개 영역을 월하노인이 명반으로 짚어드립니다.",
+    description: "내 인생의 대운은 언제 시작될까. 돈·일·사랑·건강, 12개 영역을 홍서 아씨가 명반으로 짚어드립니다.",
     type: "website",
     locale: "ko_KR",
     siteName: CONFIG.BRAND,

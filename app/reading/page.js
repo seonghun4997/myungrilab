@@ -806,7 +806,7 @@ function Diagnosis({ z, name, timeUnknown, onPay }) {
         <p className="blur-tx" aria-hidden="true">
           {selfText.slice(firstSentence(selfText).length)} 이 별이 그대의 재물·직업·인연에서 각각 어떤 얼굴로 나타나는지, 인생 12개 영역을 전부 펴면 드러납니다.
         </p>
-        <div className="lockline">🔒 정식 감정서에서 개봉</div>
+        <div className="lockline">🔒 감정서 제1·2장 — 명궁 정밀 풀이에서 개봉</div>
       </div>
 
       <p className="whisper" style={{ fontSize: 21 }}>그대의 대운이<br />언제 시작되는지, 다 적혀 있네.</p>
@@ -820,7 +820,7 @@ function Diagnosis({ z, name, timeUnknown, onPay }) {
         <p className="blur-tx" aria-hidden="true">
           그 10년의 주제가 무엇인지, 황금기인지 시련기인지, 갈아타는 1~2년을 어떻게 건너야 하는지 — 10년 대운 연대표는 정식 감정서의 運 편에서 연도별로 다룹니다.
         </p>
-        <div className="lockline">🔒 정식 감정서에서 개봉</div>
+        <div className="lockline">🔒 감정서 제7장 — 10년 대운 연대표에서 개봉</div>
       </div>
 
       {/* 재물 */}
@@ -830,7 +830,7 @@ function Diagnosis({ z, name, timeUnknown, onPay }) {
         <p className="blur-tx" aria-hidden="true">
           이 별이 말하는 돈 버는 방식과 그릇, 돈이 새는 전형적인 경로, 그리고 복을 실어오는 기운(화록)과 새게 만드는 기운(화기)이 재물 자리에 걸렸는지 — 들어오는 길과 새는 길을 정식 감정서에서 낱낱이 다룹니다.
         </p>
-        <div className="lockline">🔒 정식 감정서에서 개봉</div>
+        <div className="lockline">🔒 감정서 제8장 — 재물운에서 개봉</div>
       </div>
 
       {/* 애정 */}
@@ -840,7 +840,7 @@ function Diagnosis({ z, name, timeUnknown, onPay }) {
         <p className="blur-tx" aria-hidden="true">
           {spouseText.slice(firstSentence(spouseText).length)} 이 인연을 만나는 시기와 조심할 함정까지.
         </p>
-        <div className="lockline">🔒 정식 감정서에서 개봉</div>
+        <div className="lockline">🔒 감정서 제3장 — 연애·결혼운에서 개봉</div>
       </div>
 
       {/* 화기 */}
@@ -849,7 +849,7 @@ function Diagnosis({ z, name, timeUnknown, onPay }) {
         <p className="blur-tx" aria-hidden="true">
           {giStar ? "그대의 명반에는 발목을 잡는 기운, 화기(化忌)가 붙은 별이 하나 있습니다. 그 별이 인생 어느 영역을 흔드는지, 그 기운이 발동할 때 다루는 법은..." : "명반에서 기운이 꺾이는 자리가 어디인지, 그 자리를 다루는 법은..."}
         </p>
-        <div className="lockline">🔒 정식 감정서에서 개봉</div>
+        <div className="lockline">🔒 감정서 제9장 — 화기(化忌) 다루는 법에서 개봉</div>
       </div>
 
       <OfferBar onPay={onPay} />
@@ -1110,10 +1110,21 @@ function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth
                 입금을 완료했어요
               </button>
             ) : (
-              <p style={{ textAlign: "center", fontSize: 13.5, color: "var(--amethyst-hi)", marginTop: 12 }}>
-                <img src="/char/wait.webp" alt="" width={349} height={291} style={{ display: "block", width: 150, height: "auto", margin: "0 auto 6px", WebkitMaskImage: "linear-gradient(to bottom, black 58%, transparent 99%)", maskImage: "linear-gradient(to bottom, black 58%, transparent 99%)" }} />
-                접수됐어요. 확인되는 대로 감정서 링크를 문자로 보내드릴게요.<br /><span style={{ color: "var(--tx-dim)", fontSize: 12 }}>확인은 매일 오전 9시~밤 12시, 보통 1시간 안이에요. 심야 입금은 다음 날 오전 9시부터 순서대로 확인해요.</span>
-              </p>
+              <>
+                <p style={{ textAlign: "center", fontSize: 13.5, color: "var(--amethyst-hi)", marginTop: 12 }}>
+                  <img src="/char/wait.webp" alt="" width={349} height={291} style={{ display: "block", width: 150, height: "auto", margin: "0 auto 6px", WebkitMaskImage: "linear-gradient(to bottom, black 58%, transparent 99%)", maskImage: "linear-gradient(to bottom, black 58%, transparent 99%)" }} />
+                  접수됐어요. 확인되는 대로 감정서 링크를 문자로 보내드릴게요.<br /><span style={{ color: "var(--tx-dim)", fontSize: 12 }}>확인은 매일 오전 9시~밤 12시, 보통 1시간 안이에요. 심야 입금은 다음 날 오전 9시부터 순서대로 확인해요.</span>
+                </p>
+                {orderCode && (
+                  <div style={{ border: "1px dashed rgba(255,212,121,.6)", borderRadius: 14, padding: "13px 15px", margin: "12px 0 0", textAlign: "center", background: "rgba(255,212,121,.05)" }}>
+                    <p className="mono" style={{ fontSize: 10.5, color: "var(--tx-dim)", letterSpacing: ".14em", marginBottom: 5 }}>내 주문코드 — 이 화면을 캡처해두세요</p>
+                    <button className="code-chip" style={{ fontSize: 19, letterSpacing: ".2em", padding: "7px 16px" }} onClick={() => copyText(orderCode, "주문코드2")}>
+                      {orderCode} {copied === "주문코드2" ? "✓" : "⧉"}
+                    </button>
+                    <p style={{ fontSize: 11, color: "var(--tx-dim)", marginTop: 7, lineHeight: 1.6 }}>입금 확인이 늦어질 때, 이 코드 하나면 바로 찾아드려요.</p>
+                  </div>
+                )}
+              </>
             )}
             <p className="mono" style={{ fontSize: 10, color: "var(--tx-dim)", marginTop: 10, lineHeight: 1.7 }}>
               {LEGAL.REFUND}<br />링크 문자를 잃어버리면 그 문자에 회신 — 다시 보내드리네.

@@ -96,6 +96,10 @@ export default function MatchBox() {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [kakao, setKakao] = useState("");
+  const [prefsOpen, setPrefsOpen] = useState(false);
+  const [prefAgeMin, setPrefAgeMin] = useState("");
+  const [prefAgeMax, setPrefAgeMax] = useState("");
+  const [prefRegion, setPrefRegion] = useState("");
   const [payOpen, setPayOpen] = useState(false);
   const [copied, setCopied] = useState("");
   const copy = async (t, label) => { try { await navigator.clipboard.writeText(t); setCopied(label); setTimeout(() => setCopied(""), 1600); } catch (e) {} };
@@ -116,6 +120,10 @@ export default function MatchBox() {
       if (!res.ok) throw new Error(d.error || "불러오기 실패");
       if (first) ev("matchbox_view", { cards: (d.cards || []).length });
       setData(d);
+      try {
+        const pp = d.myPrefs || {};
+        setPrefAgeMin(pp.ageMin || ""); setPrefAgeMax(pp.ageMax || ""); setPrefRegion(pp.region || "");
+      } catch (e) {}
     } catch (e) { setErr(e.message); }
   };
   useEffect(() => { load(true); }, []); // eslint-disable-line
@@ -142,9 +150,14 @@ export default function MatchBox() {
     return ok;
   };
 
-  const respond = (matchId, accept) => { ev(accept ? "match_accept" : "match_decline"); post({ matchId, action: "respond", accept }); };
+  const respond = (matchId, accept, reason) => { ev(accept ? "match_accept" : "match_decline"); post({ matchId, action: "respond", accept, reason: reason || undefined }); };
   const propose = (cid) => { ev("match_propose"); post({ action: "propose", candidateId: cid }); };
-  const skip = (cid) => { ev("match_skip"); setOpened((o) => ({ ...o, cand: false })); post({ action: "skip", candidateId: cid }); };
+  const skip = (cid, reason) => { ev("match_skip"); setOpened((o) => ({ ...o, cand: false })); post({ action: "skip", candidateId: cid, reason: reason || undefined }); };
+  const savePrefs = () => { ev("match_prefs_save"); post({ action: "prefs", ageMin: prefAgeMin || null, ageMax: prefAgeMax || null, region: prefRegion }); setPrefsOpen(false); };
+  const blockMatch = (matchId) => {
+    if (!window.confirm("이 상대를 차단할까요? 서로의 후보에서 영구히 제외되고 되돌릴 수 없어요.")) return;
+    ev("match_block"); post({ matchId, action: "block", reason: "user" });
+  };
   const saveKakao = (matchId) => { if (!kakao.trim()) return; ev("match_kakao_set"); post({ matchId, action: "kakao", kakaoId: kakao }); setKakao(""); };
   const saveProfile = async () => {
     ev("match_profile_done");
@@ -303,8 +316,13 @@ export default function MatchBox() {
   }
 
   // ───────── 궁합 카드 (열린 상태) ─────────
-  const OpenCard = ({ c, onAccept, onDecline }) => (
+  const OpenCard = ({ c, onAccept, onDecline }) => {
+    const [askReason, setAskReason] = useState(false);
+    return (
     <div className="hx-card">
+      {onAccept && (
+        <div style={{ textAlign: "center", marginBottom: 10 }}><span className="hx-timer">오늘 자정 마감 · {timer}</span></div>
+      )}
       <div style={{ textAlign: "center" }}>
         <ScoreRing emoji={c.other.avatar} score={c.score || 76} />
         <div style={{ marginTop: -6 }}>
@@ -317,12 +335,26 @@ export default function MatchBox() {
           {c.other.age ? `${c.other.age}살` : "나이 비공개"}{c.other.job ? ` · ${c.other.job}` : ""}
         </div>
         {c.other.region && <p className="hx-dim" style={{ marginTop: 3 }}>{c.other.region}</p>}
-        {c.other.interests.length > 0 && (
-          <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-            {c.other.interests.slice(0, 5).map((t) => <span className="hx-tag" key={t}>{t}</span>)}
-          </div>
-        )}
+        {c.other.interests.length > 0 && (() => {
+          const mine = new Set(data.myProfile?.interests || []);
+          const common = c.other.interests.filter((t) => mine.has(t));
+          const others = c.other.interests.filter((t) => !mine.has(t));
+          return (
+            <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+              {common.slice(0, 5).map((t) => <span className="hx-tag on" key={t}>{t} · 겹침</span>)}
+              {others.slice(0, Math.max(0, 5 - common.length)).map((t) => <span className="hx-tag" key={t}>{t}</span>)}
+            </div>
+          );
+        })()}
       </div>
+      {c.reasons && c.reasons.length > 0 && (
+        <div style={{ border: "1px solid rgba(255,212,121,.45)", background: "rgba(255,212,121,.06)", borderRadius: 14, padding: "11px 13px", marginTop: 12 }}>
+          <p style={{ fontSize: 11.5, color: "var(--gold)", fontWeight: 700, marginBottom: 6, letterSpacing: ".06em" }}>왜 이 사람인가 — 아씨의 세 가지 근거</p>
+          {c.reasons.map((r, i) => (
+            <p key={i} style={{ fontSize: 12.5, color: "var(--tx-dim)", lineHeight: 1.7, marginTop: i ? 6 : 0 }}>{r}</p>
+          ))}
+        </div>
+      )}
       {c.persona && (
         <div style={{ background: "rgba(139,108,255,.1)", border: "1px solid rgba(196,176,255,.28)", borderRadius: 14, padding: "11px 13px", marginTop: 12 }}>
           <p style={{ fontSize: 11.5, color: "#ff9db1", fontWeight: 700, marginBottom: 4 }}>홍서 아씨가 본 이 사람</p>
@@ -338,17 +370,29 @@ export default function MatchBox() {
           ))}
         </div>
       )}
-      {onAccept && (
+      {onAccept && !askReason && (
         <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
           <button className="hx-btn pink" style={{ flex: 1.5 }} disabled={busy} onClick={onAccept}>인연 잇기</button>
-          <button className="hx-btn ghost" style={{ flex: 1 }} disabled={busy} onClick={onDecline}>보내기</button>
+          <button className="hx-btn ghost" style={{ flex: 1 }} disabled={busy} onClick={() => setAskReason(true)}>넘기기</button>
+        </div>
+      )}
+      {onAccept && askReason && (
+        <div style={{ marginTop: 14 }}>
+          <p className="hx-dim" style={{ textAlign: "center", marginBottom: 8 }}>넘기는 이유를 알려주시면 다음 추천이 좋아져요 (선택)</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7, justifyContent: "center" }}>
+            {[["dist", "거리가 멀어요"], ["age", "나이대가 달라요"], ["feel", "끌리진 않았어요"], [null, "그냥 넘길게요"]].map(([r, t]) => (
+              <button key={t} className="hx-tag" style={{ border: "1px solid rgba(196,176,255,.28)", cursor: "pointer", fontFamily: "inherit" }}
+                disabled={busy} onClick={() => onDecline(r)}>{t}</button>
+            ))}
+          </div>
+          <button className="hx-btn ghost" style={{ marginTop: 10, padding: "9px", fontSize: 12.5 }} onClick={() => setAskReason(false)}>돌아가기</button>
         </div>
       )}
       {onAccept && (
         <p className="hx-dim" style={{ textAlign: "center", marginTop: 10 }}>수락해도 상대에게 바로 알려지지 않아요{MATCH_CONFIG.FREE_BETA ? " · 오픈 기념 성사비 0원" : ` · 성사 시에만 성사비 ${MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원`}</p>
       )}
     </div>
-  );
+  ); };
 
   // ───────── 성사 카드 ─────────
   const MatchedCard = ({ c }) => (
@@ -373,11 +417,37 @@ export default function MatchBox() {
         </div>
       )}
       {c.otherKakao ? (
-        <div style={{ background: "rgba(139,108,255,.1)", border: "1px solid rgba(196,176,255,.28)", borderRadius: 16, padding: 16, marginTop: 14, textAlign: "center" }}>
-          <p className="hx-dim">상대의 카카오톡 아이디</p>
-          <div style={{ fontSize: 20, fontWeight: 700, margin: "6px 0" }}>{c.otherKakao}</div>
-          <p className="hx-dim">좋은 연 되시길 — 홍서 아씨는 여기까지예요</p>
-        </div>
+        <>
+          <div style={{ background: "rgba(139,108,255,.1)", border: "1px solid rgba(196,176,255,.28)", borderRadius: 16, padding: 16, marginTop: 14, textAlign: "center" }}>
+            <p className="hx-dim">상대의 카카오톡 아이디</p>
+            <div style={{ fontSize: 20, fontWeight: 700, margin: "6px 0" }}>{c.otherKakao}</div>
+            <button className="hx-btn" style={{ marginTop: 6, padding: "11px", fontSize: 13.5 }} onClick={() => copy(c.otherKakao, "kko" + c.id)}>
+              {copied === "kko" + c.id ? "복사됐어요 — 카톡에서 친구 추가!" : "아이디 원탭 복사"}
+            </button>
+          </div>
+          {(() => {
+            const mine = new Set(data.myProfile?.interests || []);
+            const common = (c.other.interests || []).filter((t) => mine.has(t));
+            const lines = [];
+            if (common[0]) lines.push(`안녕하세요 :) 홍서당이 이어준 인연이에요. 저희 둘 다 ${common[0]} 좋아한다던데, 최근에 제일 좋았던 ${common[0]} 하나만 알려주세요!`);
+            lines.push(`안녕하세요! 궁합 ${c.score || 90}점이라길래 용기 내서 먼저 인사드려요. 아씨 말로는 우리가 꽤 잘 맞는 배치라던데 — 한번 믿어보실래요? :)`);
+            lines.push(`반가워요 :) 명반으로 만난 사이라니 신기하네요. 요즘 하루 중에 제일 기다려지는 시간이 언제예요?`);
+            return (
+              <div style={{ border: "1px solid rgba(255,90,122,.45)", background: "rgba(255,90,122,.06)", borderRadius: 14, padding: "12px 13px", marginTop: 12 }}>
+                <p style={{ fontSize: 11.5, color: "#ff9db1", fontWeight: 700, marginBottom: 8, letterSpacing: ".06em" }}>첫 마디가 어려우면 — 아씨의 첫인사 (탭하면 복사)</p>
+                {lines.slice(0, 3).map((t, i) => (
+                  <button key={i} onClick={() => copy(t, "gr" + i + c.id)} style={{ display: "block", width: "100%", textAlign: "left", background: "rgba(139,108,255,.07)", border: "1px solid rgba(196,176,255,.25)", borderRadius: 10, padding: "9px 11px", marginTop: i ? 7 : 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, color: "var(--tx-dim)", lineHeight: 1.6 }}>
+                    {copied === "gr" + i + c.id ? "복사됐어요 ✓" : `“${t}”`}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
+          <p className="hx-dim" style={{ textAlign: "center", marginTop: 12 }}>좋은 연 되시길 — 홍서 아씨는 여기까지예요</p>
+          <p style={{ textAlign: "center", marginTop: 8 }}>
+            <button onClick={() => blockMatch(c.id)} style={{ background: "none", border: "none", color: "var(--tx-dim)", fontSize: 11, cursor: "pointer", textDecoration: "underline", opacity: .7 }}>문제가 있었나요? 신고·차단</button>
+          </p>
+        </>
       ) : (
         <>
           {!c.freeBeta && (
@@ -447,7 +517,7 @@ export default function MatchBox() {
               <p className="hx-dim" style={{ marginTop: 10, fontSize: 11 }}>{MATCH_CONFIG.FREE_BETA ? "오픈 기념 — 성사되어도 성사비 0원" : `카드 열람·수락은 무료 · 성사 시에만 성사비 ${MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원`}</p>
             </div>
           ) : (
-            <OpenCard c={hero} onAccept={() => respond(hero.id, true)} onDecline={() => respond(hero.id, false)} />
+            <OpenCard c={hero} onAccept={() => respond(hero.id, true)} onDecline={(r) => respond(hero.id, false, r)} />
           )
         ) : cand ? (
           !opened.cand ? (
@@ -460,16 +530,38 @@ export default function MatchBox() {
               <p className="hx-dim" style={{ marginTop: 10, fontSize: 11 }}>{MATCH_CONFIG.FREE_BETA ? "오픈 기념 — 성사되어도 성사비 0원" : `카드 열람·수락은 무료 · 성사 시에만 성사비 ${MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원`}</p>
             </div>
           ) : (
-            <OpenCard c={{ ...cand, id: "cand" }} onAccept={() => propose(cand.candidateId)} onDecline={() => skip(cand.candidateId)} />
+            <OpenCard c={{ ...cand, id: "cand" }} onAccept={() => propose(cand.candidateId)} onDecline={(r) => skip(cand.candidateId, r)} />
           )
         ) : (
           <div className="hx-card" style={{ textAlign: "center" }}>
             <div style={{ display: "flex", justifyContent: "center", margin: "6px 0 12px" }}><CardBack w={92} h={126} /></div>
-            <img src="/char/loading.webp" alt="" width={432} height={281} style={{ display: "block", width: 150, height: "auto", margin: "0 auto 4px", WebkitMaskImage: "radial-gradient(ellipse 72% 66% at 50% 45%, black 58%, transparent 100%)", maskImage: "radial-gradient(ellipse 72% 66% at 50% 45%, black 58%, transparent 100%)" }} />
             <div className="hx-h1">{data.dailyDone ? "오늘의 인연은 여기까지예요" : "홍서 아씨가 실을 고르고 있어요"}</div>
-            <p className="hx-dim" style={{ marginTop: 4 }}>
-              {data.dailyDone ? <>인연 카드는 하루에 한 장 — 내일 새 카드가 도착해요</> : <>{data.name} 님의 명반과 닿는 인연이 나타나면<br />문자로 알려드릴게요</>}
+            <p className="hx-dim" style={{ marginTop: 6, lineHeight: 1.75 }}>
+              {data.dailyDone
+                ? <>인연 카드는 하루에 한 장 — 내일 새 카드가 도착해요</>
+                : data.poolCount > 0
+                  ? <>오늘 <b style={{ color: "var(--gold)" }}>{data.poolCount}개의 명반</b>을 {data.name} 님 명반에 대어봤어요.<br />아직 실이 팽팽해지는 짝을 못 찾았어요 — 억지로 잇지 않을게요.<br />맞는 실이 나타나면 바로 문자로 알려드려요.</>
+                  : <>{data.name} 님의 명반과 닿는 인연이 나타나면<br />바로 문자로 알려드릴게요.</>}
             </p>
+            {!prefsOpen ? (
+              <button className="hx-btn ghost" style={{ marginTop: 14, padding: "10px", fontSize: 13 }} onClick={() => setPrefsOpen(true)}>⚙ 그동안 선호를 다듬어둘까요?</button>
+            ) : (
+              <div style={{ textAlign: "left", marginTop: 14 }}>
+                <div className="hx-label">원하는 나이 범위</div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input className="hx-input" type="tel" inputMode="numeric" placeholder="최소 (예: 25)" value={prefAgeMin} onChange={(e) => setPrefAgeMin(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))} />
+                  <span className="hx-dim">~</span>
+                  <input className="hx-input" type="tel" inputMode="numeric" placeholder="최대 (예: 35)" value={prefAgeMax} onChange={(e) => setPrefAgeMax(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))} />
+                </div>
+                <div className="hx-label">지역 (한 단어면 충분해요)</div>
+                <input className="hx-input" placeholder="예: 서울, 부산, 경기" value={prefRegion} onChange={(e) => setPrefRegion(e.target.value)} maxLength={20} />
+                <p className="hx-dim" style={{ marginTop: 8, fontSize: 11.5 }}>비워두면 명반 궁합만으로 골라드려요.</p>
+                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                  <button className="hx-btn ghost" style={{ flex: 1 }} onClick={() => setPrefsOpen(false)}>닫기</button>
+                  <button className="hx-btn" style={{ flex: 2 }} disabled={busy} onClick={savePrefs}>선호 저장</button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -499,20 +591,32 @@ export default function MatchBox() {
                   {c.matched ? (
                     <div style={{ marginTop: 8 }}><MatchedCard c={c} /></div>
                   ) : c.myAccept === false ? (
-                    <p style={{ fontSize: 13, color: "var(--tx-dim)", marginTop: 4 }}>이번 인연은 보냈어요</p>
+                    <p style={{ fontSize: 13, color: "var(--tx-dim)", marginTop: 4 }}>이번 인연은 넘겼어요</p>
+                  ) : c.myAccept === true && c.otherAccept === false ? (
+                    <div className="hx-card" style={{ padding: "14px 15px", marginTop: 8 }}>
+                      <span className="hx-state" style={{ background: "rgba(139,108,255,.14)", color: "#c4b0ff", border: "1px solid rgba(196,176,255,.35)" }}>이번 실은 스쳤어요</span>
+                      <p className="hx-dim" style={{ marginTop: 7, lineHeight: 1.7 }}>명반이 아닌 타이밍의 문제예요.<br />아씨가 내일 새 실을 걸어드릴게요.</p>
+                    </div>
                   ) : c.myAccept === true ? (
                     <div className="hx-card" style={{ padding: "14px 15px", marginTop: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <AvatarCircle emoji={c.other.avatar} size={40} />
                         <div>
                           <span className="hx-state" style={{ background: "rgba(255,212,121,.14)", color: "var(--gold)", border: "1px solid rgba(255,212,121,.45)" }}>상대의 마음을 기다리는 중</span>
-                          <p className="hx-dim" style={{ marginTop: 5 }}>홍서 아씨가 상대의 마음을 물으러 갔어요<br />결과는 매일 밤 11시에 열리고, 문자로도 알려드려요</p>
+                          <p style={{ marginTop: 7, fontSize: 12, color: "var(--tx-dim)" }}>
+                            <span style={{ color: "#5DCAA5" }}>실 걸어둠 ✓</span>
+                            <span style={{ margin: "0 5px", opacity: .5 }}>─</span>
+                            <span style={{ color: c.otherSeen ? "#5DCAA5" : "var(--tx-dim)" }}>상대 확인 {c.otherSeen ? "✓" : "···"}</span>
+                            <span style={{ margin: "0 5px", opacity: .5 }}>─</span>
+                            <span style={{ color: "var(--gold)" }}>응답 대기</span>
+                          </p>
+                          <p className="hx-dim" style={{ marginTop: 5 }}>응답이 오는 대로 바로 문자로 알려드려요<br />재촉하지 않는 게 예의랍니다 — 아씨가 지켜보고 있어요</p>
                         </div>
                       </div>
                     </div>
                   ) : (
                     <div style={{ marginTop: 8 }}>
-                      {opened[c.id] ? <OpenCard c={c} onAccept={() => respond(c.id, true)} onDecline={() => respond(c.id, false)} /> : (
+                      {opened[c.id] ? <OpenCard c={c} onAccept={() => respond(c.id, true)} onDecline={(r) => respond(c.id, false, r)} /> : (
                         <button className="hx-btn ghost" style={{ width: "auto", padding: "9px 18px", fontSize: 13 }} onClick={() => setOpened((o) => ({ ...o, [c.id]: true }))}>카드 다시 보기</button>
                       )}
                     </div>

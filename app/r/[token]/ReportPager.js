@@ -162,6 +162,28 @@ export default function ReportPager({ name, birth, token, chapters, scores, z })
   useEffect(() => { ev("report_view"); }, []);
   // 재방문용 — 이 기기에서 홈에 다시 오면 "내 감정서 다시 보기"로 바로 올 수 있게 기억해둔다
   useEffect(() => { try { if (token) localStorage.setItem("hs_my_report", token); } catch (e) {} }, [token]);
+
+  // v23: 이어읽기 — 복원(?p= 우선, 없으면 이 기기 저장분) 후 읽던 위치를 로컬+서버에 기록
+  useEffect(() => {
+    try {
+      const q = Number(new URLSearchParams(window.location.search).get("p"));
+      const loc = Number(localStorage.getItem(`hs_read_${token}`));
+      const start = Number.isFinite(q) && q > 0 ? q : Number.isFinite(loc) && loc > 0 ? loc : 0;
+      if (start > 0 && start < total) setPage(start);
+    } catch (e) {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, total]);
+  useEffect(() => {
+    if (!token || page === 0) return;
+    try { localStorage.setItem(`hs_read_${token}`, String(page)); } catch (e) {}
+    const id = setTimeout(() => {
+      fetch("/api/lead", {
+        method: "PATCH", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token, readPos: page }),
+      }).catch(() => {});
+    }, 1200);
+    return () => clearTimeout(id);
+  }, [page, token]);
   useEffect(() => { try { window.scrollTo(0, 0); } catch (e) {} }, [page]);
 
   // v18.7: 페이지별 이탈 측정 — 표지(intro)/序(seo)/각 장(ch01~)/맺음(fin)을 구분해 발사

@@ -529,8 +529,10 @@ function ElderFlow({ step, form, setForm, goto, onSubmit, farthest = 0 }) {
           <>
           {!isEdit && (
             <div style={{ margin: "-8px -20px 0" }}>
-              <img src="/char/hero.webp" alt="홍서 아씨" width={379} height={340}
-                style={{ display: "block", width: "100%", height: "auto", WebkitMaskImage: "linear-gradient(to bottom, black 58%, transparent 99%)", maskImage: "linear-gradient(to bottom, black 58%, transparent 99%)", marginBottom: -46 }} />
+              <img src="/char/hero.webp" alt="홍서 아씨" width={764} height={636}
+                style={{ display: "block", width: "min(100%, 480px)", height: "auto", margin: "0 auto -46px",
+                  WebkitMaskImage: "radial-gradient(ellipse 64% 74% at 50% 34%, black 52%, transparent 97%)",
+                  maskImage: "radial-gradient(ellipse 64% 74% at 50% 34%, black 52%, transparent 97%)" }} />
             </div>
           )}
           <p className="say">{ELDER.intro.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</p>

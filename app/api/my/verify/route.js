@@ -18,6 +18,7 @@ export async function POST(req) {
     }
 
     const supa = sb();
+    if (!supa) return NextResponse.json({ ok: false, error: '서비스 준비 중' }, { status: 503 });
     const { data: leads } = await supa
       .from("leads").select("id, otp").eq("phone", p)
       .order("created_at", { ascending: false }).limit(1);

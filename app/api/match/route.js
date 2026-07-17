@@ -262,7 +262,7 @@ export async function GET(req) {
 export async function POST(req) {
   const client = sb();
   if (!client) return Response.json({ error: "설정 오류" }, { status: 500 });
-  const { token, matchId, action, accept, kakaoId, profile, intro, candidateId } = await req.json();
+  const { token, matchId, action, accept, kakaoId, profile, intro, candidateId, reason, ageMin, ageMax, region } = await req.json();
   const me = await findLead(client, token);
   if (!me) return Response.json({ error: "인증 실패" }, { status: 401 });
 

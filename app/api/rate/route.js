@@ -8,7 +8,7 @@ export async function POST(req) {
       return Response.json({ error: "잘못된 요청" }, { status: 400 });
     }
     const client = sb();
-    if (!client) return Response.json({ error: "미설정" }, { status: 500 });
+    if (!client) return Response.json({ ok: false }, { status: 200 });
     const { error } = await client.from("leads").update({ rating: score }).eq("token", token);
     if (error) throw error;
     return Response.json({ ok: true });

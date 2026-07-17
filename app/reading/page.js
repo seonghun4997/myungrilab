@@ -40,7 +40,7 @@ function captureUtm() {
   } catch (e) { return {}; }
 }
 
-const INPUT_STEPS = ["gender", "birth", "time", "name", "concern", "phone"]; // v18.7: 전화번호를 맨 뒤로 (병목① 제거)
+const INPUT_STEPS = ["gender", "birth", "time", "concern", "phone"]; // v18.7: 전화번호를 맨 뒤로 (병목① 제거) / 이름 단계 제거
 
 export default function Home() {
   const [step, setStep] = useState("intro");
@@ -510,12 +510,11 @@ function ElderFlow({ step, form, setForm, goto, onSubmit, farthest = 0, hongseon
   const isEdit = farthest > idx; // 뒤로 와서 고치는 중
   const next = () => goto(INPUT_STEPS[isEdit ? farthest : idx + 1]); // 고치고 나면 원래 자리로
   const back = () => goto(idx === 0 ? "intro" : INPUT_STEPS[idx - 1]);
-  const NUM = { gender: "問 一", birth: "問 二", time: "問 三", name: "問 四", concern: "問 五", phone: "問 六" };
-  const MARK = { gender: "性", birth: "生", time: "時", phone: "絡", name: "名", concern: "憂" };
+  const NUM = { gender: "問 一", birth: "問 二", time: "問 三", concern: "問 四", phone: "問 五" };
+  const MARK = { gender: "性", birth: "生", time: "時", phone: "絡", concern: "憂" };
   const E = ELDER[step];
 
   const rows = [];
-  if (form.name && idx > INPUT_STEPS.indexOf("name")) rows.push({ k: "이름", v: form.name, s: "name" });
   if (form.phone && idx > INPUT_STEPS.indexOf("phone")) rows.push({ k: "연락처", v: form.phone, s: "phone" });
   if (form.slot != null && idx > INPUT_STEPS.indexOf("time")) rows.push({ k: "생시", v: form.timeUnknown ? "미상(오시 추정)" : TIME_SLOTS[form.slot].label, s: "time" });
   if (form.y && idx > INPUT_STEPS.indexOf("birth")) rows.push({ k: "생년월일", v: `${form.y}년 ${form.m}월 ${form.d}일 (${form.cal === "solar" ? "양력" : "음력"})`, s: "birth" });
@@ -558,7 +557,6 @@ function ElderFlow({ step, form, setForm, goto, onSubmit, farthest = 0, hongseon
         <div className="ask-input">
           {step === "birth" && <BirthInput form={form} setForm={setForm} onDone={next} />}
           {step === "time" && <TimeInput form={form} setForm={setForm} onDone={next} />}
-          {step === "name" && <NameInput form={form} setForm={setForm} onDone={next} />}
           {step === "concern" && <ConcernInput form={form} setForm={setForm} onDone={next} />}
           {step === "phone" && <PhoneInput form={form} setForm={setForm} onDone={onSubmit} />}
         </div>

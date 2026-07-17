@@ -90,7 +90,7 @@ export default function MatchBox() {
   const { token } = useParams();
   const [data, setData] = useState(null);
   // 재방문용 — 홈에 다시 오면 "내 인연함 열기"로 바로 올 수 있게 기억해둔다
-  useEffect(() => { try { if (token) localStorage.setItem("jm_my_match", token); } catch (e) {} }, [token]);
+  useEffect(() => { try { if (token) localStorage.setItem("hs_my_match", token); } catch (e) {} }, [token]);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [kakao, setKakao] = useState("");
@@ -229,7 +229,7 @@ export default function MatchBox() {
       <main className="hx"><style>{css}</style>
         <div className="hx-in">
           <div className="hx-top">
-            <span className="hx-logo"><span className="moon">月</span>자미연</span>
+            <span className="hx-logo"><span className="moon">月</span>홍서당</span>
           </div>
           <div className="hx-card">
             <div className="hx-step">{[1, 2, 3].map((n) => <span key={n} className={s === n ? "on" : ""} />)}</div>
@@ -418,7 +418,7 @@ export default function MatchBox() {
     <main className="hx"><style>{css}</style>
       <div className="hx-in">
         <div className="hx-top">
-          <span className="hx-logo"><span className="moon">月</span>자미연</span>
+          <span className="hx-logo"><span className="moon">月</span>홍서당</span>
           <span style={{ display: "flex", gap: 6 }}>
             {data.hasReport && <a className="hx-chip" href={`/r/${token}`}>내 감정서</a>}
             <button className="hx-chip" style={{ border: "none", cursor: "pointer", fontFamily: "inherit" }} onClick={() => setStep(1)}>프로필</button>

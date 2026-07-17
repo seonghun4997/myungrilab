@@ -18,5 +18,7 @@
   <circle cx="34" cy="64" r="1.6" fill="#cfc4ff" opacity=".8"/>
   <circle cx="20" cy="48" r="1.2" fill="#cfc4ff" opacity=".7"/>
   <circle cx="78" cy="72" r="1.8" fill="#cfc4ff" opacity=".75"/>
-  <path d="M18 84 C34 74 50 80 64 74 C78 68 90 76 96 72 L96 96 L4 96 L4 90 Z" fill="#0d0c2b"/>
+  <path d="M14 78 C34 68 52 84 70 74 C80 69 88 74 92 70" fill="none" stroke="#ff5a7a" stroke-width="4.5" stroke-linecap="round"/>
+  <circle cx="92" cy="70" r="3.5" fill="#ff5a7a"/>
+  <path d="M18 88 C34 80 50 86 64 80 C78 74 90 82 96 78 L96 96 L4 96 L4 92 Z" fill="#0d0c2b"/>
 </svg>

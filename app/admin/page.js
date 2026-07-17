@@ -59,11 +59,11 @@ export default function Admin() {
     setMsg("불러오는 중...");
     const res = await fetch("/api/admin/leads", { headers: { "x-admin-key": k } });
     const data = await res.json();
-    if (!res.ok) { setMsg(data.error || "불러오기 실패"); setAuthed(false); try { localStorage.removeItem("jm_admin_key"); } catch (e) {} return; }
+    if (!res.ok) { setMsg(data.error || "불러오기 실패"); setAuthed(false); try { localStorage.removeItem("hs_admin_key"); } catch (e) {} return; }
     setLeads(data.leads);
     setAuthed(true);
     setMsg("");
-    try { localStorage.setItem("jm_admin_key", k); } catch (e) {}
+    try { localStorage.setItem("hs_admin_key", k); } catch (e) {}
     const mr = await fetch("/api/admin/match", { headers: { "x-admin-key": k } });
     const md = await mr.json();
     if (mr.ok) setMatches(md.matches);
@@ -76,7 +76,7 @@ export default function Admin() {
   // 자동 로그인 — 이 기기에서 한 번 인증했으면 바로 콕핏 진입
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("jm_admin_key");
+      const saved = localStorage.getItem("hs_admin_key");
       if (saved) { setKey(saved); loadWith(saved); }
     } catch (e) {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -222,7 +222,7 @@ export default function Admin() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div className="eyebrow">관리자</div>
-          <h1 className="display" style={{ fontSize: 24, margin: "8px 0 16px", color: "var(--tx)" }}>자미연 콕핏</h1>
+          <h1 className="display" style={{ fontSize: 24, margin: "8px 0 16px", color: "var(--tx)" }}>홍서당 콕핏</h1>
         </div>
         {authed && (
           <button className="btn btn-ghost" style={{ width: "auto", padding: "8px 14px", fontSize: 12 }} onClick={load}>↻ 새로고침</button>

@@ -161,7 +161,7 @@ export default function ReportPager({ name, birth, token, chapters, scores, z })
 
   useEffect(() => { ev("report_view"); }, []);
   // 재방문용 — 이 기기에서 홈에 다시 오면 "내 감정서 다시 보기"로 바로 올 수 있게 기억해둔다
-  useEffect(() => { try { if (token) localStorage.setItem("jm_my_report", token); } catch (e) {} }, [token]);
+  useEffect(() => { try { if (token) localStorage.setItem("hs_my_report", token); } catch (e) {} }, [token]);
   useEffect(() => { try { window.scrollTo(0, 0); } catch (e) {} }, [page]);
 
   // v18.7: 페이지별 이탈 측정 — 표지(intro)/序(seo)/각 장(ch01~)/맺음(fin)을 구분해 발사
@@ -191,7 +191,7 @@ export default function ReportPager({ name, birth, token, chapters, scores, z })
     return (
       <div style={{ textAlign: "center", padding: "10px 0 20px" }}>
         <HeroArt />
-        <div className="eyebrow" style={{ marginBottom: 26 }}>紫微緣 · 자미두수 정밀 감정서</div>
+        <div className="eyebrow" style={{ marginBottom: 26 }}>紅緖堂 · 자미두수 정밀 감정서</div>
         <p className="display" style={{ fontSize: 20, lineHeight: 2.05, color: "var(--tx)", marginBottom: 26 }}>
           “어서 오세요, {name}님.<br />{name}님의 자미두수 명반을 펼쳐<br />삶의 큰 흐름을 읽어드릴게요.”
         </p>

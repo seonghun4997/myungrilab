@@ -25,7 +25,7 @@ export default function NotFound() {
         감정서·인연함은 문자로 받으신 본인 전용 링크로 열어주세요.
       </p>
       <Link href="/" className="btn" style={{ width: "auto", padding: "13px 26px", textDecoration: "none" }}>
-        자미연 처음으로 →
+        홍서당 처음으로 →
       </Link>
     </main>
   );

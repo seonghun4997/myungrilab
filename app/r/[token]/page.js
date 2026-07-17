@@ -57,7 +57,7 @@ export default async function ReportPage({ params }) {
       <main className="wrap" style={{ paddingTop: 80, textAlign: "center" }}>
         <div className="eyebrow">{CONFIG.BRAND_HANJA}</div>
         <h1 className="display" style={{ fontSize: 24, margin: "16px 0 10px", color: "var(--tx)" }}>감정서를 찾을 수 없습니다</h1>
-        <p style={{ color: "var(--tx-dim)", fontSize: 14 }}>링크가 정확한지 확인해주세요. 문제가 계속되면 카카오톡 채널로 문의 바랍니다.</p>
+        <p style={{ color: "var(--tx-dim)", fontSize: 14 }}>링크가 정확한지 확인해주세요. 문제가 계속되면 받으신 문자에 회신해 문의 바랍니다.</p>
       </main>
     );
   }

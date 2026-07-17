@@ -58,7 +58,7 @@ export default function ShareCard({ name, myeongStars, bureau, rarityPct }) {
     x.fillText("myungrilab.vercel.app", W / 2, 1250);
 
     const a = document.createElement("a");
-    a.download = `자미연-명반카드-${name}.png`;
+    a.download = `홍서당-명반카드-${name}.png`;
     a.href = cv.toDataURL("image/png");
     a.click();
   };

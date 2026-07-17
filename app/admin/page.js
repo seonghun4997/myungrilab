@@ -158,10 +158,10 @@ export default function Admin() {
 
   const reportUrl = (token) => `${window.location.origin}/r/${token}`;
   const kakaoMsg = (l) =>
-    `[${CONFIG.BRAND}] ${l.name}님, 월하노인의 인연 감정서가 완성되었습니다. 아래 링크에서 확인해주세요 (본인 전용): ${reportUrl(l.token)} — 궁금한 점은 이 문자에 회신해주세요.`;
+    `[${CONFIG.BRAND}] ${l.name}님, 홍서 아씨의 감정서가 완성됐어요. 아래 링크에서 확인해주세요 (본인 전용): ${reportUrl(l.token)} — 궁금한 점은 이 문자에 회신해주세요.`;
   const smsHref = (phone, body) => `sms:${(phone || "").replace(/[^0-9+]/g, "")}?body=${encodeURIComponent(body)}`;
   const cardMsg = (name, token) =>
-    `[${CONFIG.BRAND}] ${name}님, 월하노인이 인연 카드를 보냈습니다. 인연함에서 확인해주세요 (본인 전용): ${typeof window !== "undefined" ? window.location.origin : ""}/m/${token}`;
+    `[${CONFIG.BRAND}] ${name}님, 홍서 아씨가 인연 카드를 보냈어요. 인연함에서 확인해주세요 (본인 전용): ${typeof window !== "undefined" ? window.location.origin : ""}/m/${token}`;
   const matchedMsg = (name, token) =>
     `[${CONFIG.BRAND}] ${name}님, 붉은 실이 이어졌습니다! 인연함에서 성사 안내를 확인해주세요: ${typeof window !== "undefined" ? window.location.origin : ""}/m/${token}`;
 

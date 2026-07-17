@@ -215,7 +215,7 @@ export default function MatchBox() {
       <main className="hx"><style>{css}</style>
         <div className="hx-in" style={{ paddingTop: 90, textAlign: "center" }}>
           <div className="hx-h1">紅線 매칭은 만 19세부터예요</div>
-          <p className="hx-dim" style={{ marginTop: 8 }}>감정서는 그대로 보실 수 있어요.<br />성인이 되는 해에 월하노인이 기다리고 있을게요.</p>
+          <p className="hx-dim" style={{ marginTop: 8 }}>감정서는 그대로 보실 수 있어요.<br />성인이 되는 해에 홍서 아씨가 기다리고 있을게요.</p>
           {data.hasReport && <a className="hx-btn" style={{ marginTop: 20, maxWidth: 240, marginLeft: "auto", marginRight: "auto" }} href={`/r/${token}`}>내 감정서 보기</a>}
         </div>
       </main>
@@ -301,7 +301,7 @@ export default function MatchBox() {
           <span className="hx-badge">궁합 {c.score || 76}점{c.pct ? ` · 상위 ${c.pct}%` : ""}</span>
         </div>
         {c.pct && (
-          <p className="hx-dim" style={{ marginTop: 8 }}>월하노인이 100쌍의 명반을 이으면, 위에서 {c.pct}번째 안에 드는 배치예요<br /><span style={{ fontSize: 10.5 }}>(자미두수 배치 기준 자체 산정)</span></p>
+          <p className="hx-dim" style={{ marginTop: 8 }}>홍서 아씨가 100쌍의 명반을 이으면, 위에서 {c.pct}번째 안에 드는 배치예요<br /><span style={{ fontSize: 10.5 }}>(자미두수 배치 기준 자체 산정)</span></p>
         )}
         <div className="hx-h1" style={{ marginTop: 12 }}>
           {c.other.age ? `${c.other.age}살` : "나이 비공개"}{c.other.job ? ` · ${c.other.job}` : ""}
@@ -315,7 +315,7 @@ export default function MatchBox() {
       </div>
       {c.persona && (
         <div style={{ background: "#f3f1fb", borderRadius: 14, padding: "11px 13px", marginTop: 12 }}>
-          <p style={{ fontSize: 11.5, color: "#6c4dff", fontWeight: 700, marginBottom: 4 }}>월하노인이 본 이 사람</p>
+          <p style={{ fontSize: 11.5, color: "#6c4dff", fontWeight: 700, marginBottom: 4 }}>홍서 아씨가 본 이 사람</p>
           <p style={{ fontSize: 13, color: "#544d7d", lineHeight: 1.7 }}>{c.persona.look}이에요. {c.persona.love}이고요.</p>
         </div>
       )}
@@ -366,7 +366,7 @@ export default function MatchBox() {
         <div style={{ background: "#f3f1fb", borderRadius: 16, padding: 16, marginTop: 14, textAlign: "center" }}>
           <p className="hx-dim">상대의 카카오톡 아이디</p>
           <div style={{ fontSize: 20, fontWeight: 700, margin: "6px 0" }}>{c.otherKakao}</div>
-          <p className="hx-dim">좋은 연 되시길 — 월하노인은 여기까지예요</p>
+          <p className="hx-dim">좋은 연 되시길 — 홍서 아씨는 여기까지예요</p>
         </div>
       ) : (
         <>
@@ -444,7 +444,7 @@ export default function MatchBox() {
             <div className="hx-card" style={{ textAlign: "center" }}>
               <span className="hx-timer">자정까지 {timer}</span>
               <div style={{ display: "flex", justifyContent: "center", margin: "16px 0 12px" }}><CardBack /></div>
-              <div className="hx-h1">월하노인이 인연을 찾았어요</div>
+              <div className="hx-h1">홍서 아씨가 인연을 찾았어요</div>
               <p className="hx-dim" style={{ marginTop: 4 }}>{data.name} 님의 명반과 궁합이 가장 좋은 분이에요</p>
               <button className="hx-btn" style={{ marginTop: 16 }} onClick={() => { ev("match_card_open"); setOpened((o) => ({ ...o, cand: true })); }}>카드 열어보기</button>
               <p className="hx-dim" style={{ marginTop: 10, fontSize: 11 }}>{MATCH_CONFIG.FREE_BETA ? "오픈 기념 — 성사되어도 성사비 0원" : `카드 열람·수락은 무료 · 성사 시에만 성사비 ${MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원`}</p>
@@ -455,7 +455,8 @@ export default function MatchBox() {
         ) : (
           <div className="hx-card" style={{ textAlign: "center" }}>
             <div style={{ display: "flex", justifyContent: "center", margin: "6px 0 12px" }}><CardBack w={92} h={126} /></div>
-            <div className="hx-h1">{data.dailyDone ? "오늘의 인연은 여기까지예요" : "월하노인이 실을 고르고 있어요"}</div>
+            <img src="/char/loading.webp" alt="" width={432} height={281} style={{ display: "block", width: 150, height: "auto", margin: "0 auto 4px", WebkitMaskImage: "radial-gradient(ellipse 72% 66% at 50% 45%, black 58%, transparent 100%)", maskImage: "radial-gradient(ellipse 72% 66% at 50% 45%, black 58%, transparent 100%)" }} />
+            <div className="hx-h1">{data.dailyDone ? "오늘의 인연은 여기까지예요" : "홍서 아씨가 실을 고르고 있어요"}</div>
             <p className="hx-dim" style={{ marginTop: 4 }}>
               {data.dailyDone ? <>인연 카드는 하루에 한 장 — 내일 새 카드가 도착해요</> : <>{data.name} 님의 명반과 닿는 인연이 나타나면<br />문자로 알려드릴게요</>}
             </p>
@@ -463,7 +464,7 @@ export default function MatchBox() {
         )}
 
         {data.monthMatched > 0 && (
-          <div className="hx-banner">이번 달 월하노인이 이은 인연 {data.monthMatched}쌍</div>
+          <div className="hx-banner">이번 달 홍서 아씨가 이은 인연 {data.monthMatched}쌍</div>
         )}
 
         {/* 지난 인연 타임라인 */}
@@ -484,7 +485,7 @@ export default function MatchBox() {
                         <AvatarCircle emoji={c.other.avatar} size={40} />
                         <div>
                           <span className="hx-state" style={{ background: "#fff4d6", color: "#854f0b" }}>상대의 마음을 기다리는 중</span>
-                          <p className="hx-dim" style={{ marginTop: 5 }}>월하노인이 상대의 마음을 물으러 갔어요<br />결과는 매일 밤 11시에 열리고, 문자로도 알려드려요</p>
+                          <p className="hx-dim" style={{ marginTop: 5 }}>홍서 아씨가 상대의 마음을 물으러 갔어요<br />결과는 매일 밤 11시에 열리고, 문자로도 알려드려요</p>
                         </div>
                       </div>
                     </div>

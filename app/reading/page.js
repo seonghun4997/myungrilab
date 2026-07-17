@@ -545,7 +545,7 @@ function ElderFlow({ step, form, setForm, goto, onSubmit, farthest = 0 }) {
 
         {isEdit && (
           <p className="mono" style={{ fontSize: 11, color: "var(--gold)", marginBottom: 10 }}>
-            고쳐 적으시게 — 확인하면 하던 곳으로 바로 돌아가네.
+            고쳐 적어주세요 — 확인하면 하던 곳으로 바로 돌아가요.
           </p>
         )}
         <div className="ask-input">
@@ -588,7 +588,7 @@ function BirthInput({ form, setForm, onDone }) {
   const problem = (() => {
     if (digits.length !== 8) return null;
     const y = +digits.slice(0, 4), m = +digits.slice(4, 6), d = +digits.slice(6, 8);
-    if (y < 1930 || y > new Date().getFullYear()) return "연도를 다시 확인해주시게.";
+    if (y < 1930 || y > new Date().getFullYear()) return "연도를 다시 확인해주세요.";
     if (m < 1 || m > 12) return "월(月)이 맞지 않네.";
     if (d < 1 || d > 31) return "일(日)이 맞지 않네.";
     return null;
@@ -694,7 +694,7 @@ function ConcernInput({ form, setForm, onDone }) {
   return (
     <div>
       <p className="mono" style={{ fontSize: 11.5, letterSpacing: ".08em", color: "var(--tx-dim)", margin: "0 0 8px" }}>
-        지금 마음은 어느 자리인가 (하나만 짚어주게)
+        지금 마음은 어느 자리인가요? (하나만 짚어주세요)
       </p>
       <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 14 }}>
         {LOVE_STATUS.map((st) => (
@@ -716,7 +716,7 @@ function ConcernInput({ form, setForm, onDone }) {
       </div>
       <textarea
         className="concern-ta"
-        placeholder="이직인지, 그 사람인지, 돈인지 — 적어두면 감정서에서 답해줌세."
+        placeholder="이직인지, 그 사람인지, 돈인지 — 적어두면 감정서에서 답해드려요."
         value={form.concern}
         maxLength={200}
         onChange={(e) => setForm({ ...form, concern: e.target.value })}
@@ -727,7 +727,7 @@ function ConcernInput({ form, setForm, onDone }) {
         다 음 ›
       </button>
       <button className="skip-link" onClick={() => { setForm({ ...form, concern: "" }); ev("concern_skip"); onDone(); }}>
-        딱히 없네, 다음으로 가주시게
+        딱히 없어요, 다음으로 갈게요
       </button>
     </div>
   );
@@ -778,7 +778,7 @@ function Diagnosis({ z, name, timeUnknown, onPay }) {
 
       <p className="whisper">{name ? `${name}...` : "허어..."}<br />별이 크게 움직이는 명이군.</p>
       {timeUnknown && (
-        <p className="tu-note">※ 태어난 시를 몰라 정오 기준으로 본 추정 명반일세. 시를 확인하면 감정서 문자에 회신 주시게 — 다시 봐줌세.</p>
+        <p className="tu-note">※ 태어난 시를 몰라 정오 기준으로 본 추정 명반이에요. 시를 확인하면 감정서 문자에 회신해주세요 — 다시 봐드릴게요.</p>
       )}
 
       {/* 명궁 — 대공개 */}
@@ -939,7 +939,7 @@ function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth
     const code = coupon.trim().toUpperCase();
     const amount = CONFIG.COUPONS[code];
     if (amount) { setCouponApplied(amount); setCouponMsg(`쿠폰 적용 — ${amount.toLocaleString("ko-KR")}원 차감`); ev("coupon_ok"); }
-    else { setCouponApplied(0); setCouponMsg("유효하지 않은 코드일세."); }
+    else { setCouponApplied(0); setCouponMsg("유효하지 않은 코드예요."); }
   };
 
   const isFree = couponApplied > 0 && price === 0;
@@ -1037,7 +1037,7 @@ function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth
 
         {isFree ? (
           <button className="paybtn" onClick={claimFree} disabled={claiming} style={{ border: "none", cursor: claiming ? "wait" : "pointer", opacity: claiming ? 0.75 : 1 }}>
-            {claiming ? "월하노인이 명반을 읽는 중… (30초~1분)" : "0원 — 감정서 바로 받기"}
+            {claiming ? "홍서 아씨가 명반을 읽는 중… (30초~1분)" : "0원 — 감정서 바로 받기"}
           </button>
         ) : (
         <div style={{ display: "grid", gap: 8 }}>
@@ -1059,7 +1059,7 @@ function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth
           </a>
           ) : (
           <p className="mono" style={{ fontSize: 11, color: "var(--tx-dim)", textAlign: "center", margin: "2px 0" }}>
-            📱 토스 앱 3초 결제는 휴대폰으로 접속하면 나타나네 — PC에서는 아래 무통장입금을 쓰시게
+            📱 토스 앱 3초 결제는 휴대폰으로 접속하면 나타나요 — PC에서는 아래 무통장입금을 이용해주세요
           </p>
           )}
           <button
@@ -1091,7 +1091,7 @@ function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth
 
             <p className="ap-t" style={{ marginTop: 14 }}>이후 절차 — 그대는 입금만 하면 되네</p>
             <div className="ap-step"><span>①</span> 입금 — 위 계좌로 (토스 결제도 같은 계좌로 들어오네)</div>
-            <div className="ap-step"><span>②</span> 확인 — 시스템이 입금 내역을 순차 대조하네<br /><span style={{ fontSize: 12, color: "var(--tx-dim)", marginLeft: 26 }}>확인 시간: 매일 오전 9시~밤 12시 (이 시간엔 보통 1시간 이내) · 심야 입금은 다음 날 오전 9시부터 순차 처리</span></div>
+            <div className="ap-step"><span>②</span> 확인 — 시스템이 입금 내역을 순차 대조해요<br /><span style={{ fontSize: 12, color: "var(--tx-dim)", marginLeft: 26 }}>확인 시간: 매일 오전 9시~밤 12시 (이 시간엔 보통 1시간 이내) · 심야 입금은 다음 날 오전 9시부터 순차 처리</span></div>
             <div className="ap-step"><span>③</span> 문자 — 남기신 번호 {form.phone ? form.phone.replace(/(\d{3})(\d{3,4})(\d{4})/, "$1-$2-$3") : ""}로 감정서 링크가 자동 발송되네</div>
 
             {!depositDone ? (
@@ -1102,7 +1102,7 @@ function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth
             ) : (
               <p style={{ textAlign: "center", fontSize: 13.5, color: "var(--amethyst-hi)", marginTop: 12 }}>
                 <img src="/char/wait.webp" alt="" width={349} height={291} style={{ display: "block", width: 150, height: "auto", margin: "0 auto 6px", WebkitMaskImage: "linear-gradient(to bottom, black 58%, transparent 99%)", maskImage: "linear-gradient(to bottom, black 58%, transparent 99%)" }} />
-                접수되었네. 확인되는 대로 감정서 링크를 문자로 보내줌세.<br /><span style={{ color: "var(--tx-dim)", fontSize: 12 }}>확인은 매일 오전 9시~밤 12시, 보통 1시간 안일세. 심야 입금은 다음 날 오전 9시부터 순서대로 확인하네.</span>
+                접수됐어요. 확인되는 대로 감정서 링크를 문자로 보내드릴게요.<br /><span style={{ color: "var(--tx-dim)", fontSize: 12 }}>확인은 매일 오전 9시~밤 12시, 보통 1시간 안이에요. 심야 입금은 다음 날 오전 9시부터 순서대로 확인해요.</span>
               </p>
             )}
             <p className="mono" style={{ fontSize: 10, color: "var(--tx-dim)", marginTop: 10, lineHeight: 1.7 }}>

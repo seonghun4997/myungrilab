@@ -24,7 +24,7 @@ export default function RateWidget({ token }) {
   return (
     <div className="card" style={{ textAlign: "center", marginBottom: 16 }}>
       <p className="display" style={{ fontSize: 16, marginBottom: 4 }}>풀이는 마음에 드셨나요?</p>
-      <p style={{ fontSize: 12.5, color: "var(--tx-dim)", marginBottom: 12 }}>남겨주신 별은 월하노인이 다음 감정을 다듬는 데 씁니다.</p>
+      <p style={{ fontSize: 12.5, color: "var(--tx-dim)", marginBottom: 12 }}>남겨주신 별은 홍서 아씨가 다음 감정을 다듬는 데 써요.</p>
       <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
         {[1, 2, 3, 4, 5].map((s) => (
           <button

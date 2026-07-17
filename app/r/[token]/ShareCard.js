@@ -53,7 +53,7 @@ export default function ShareCard({ name, myeongStars, bureau, rarityPct }) {
     x.fillStyle = "#eae6ff"; x.font = "40px serif";
     x.fillText(`${bureau || ""} · 상위 ${rarityPct}% 배치`, W / 2, 870);
     x.fillStyle = "rgba(234,230,255,.75)"; x.font = "34px serif";
-    x.fillText("달 아래에서, 월하노인이 읽다", W / 2, 1180);
+    x.fillText("달 아래에서, 홍서 아씨가 읽다", W / 2, 1180);
     x.fillStyle = "rgba(234,230,255,.5)"; x.font = "28px sans-serif";
     x.fillText("myungrilab.vercel.app", W / 2, 1250);
 

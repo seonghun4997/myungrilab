@@ -140,7 +140,7 @@ function ChapterBody({ ch, text, scores, z, gender, name, token }) {
       {content}
       {ch.id === "ch08" && (
         <a href={`/m/${token}`} className="btn btn-seal" style={{ marginTop: 18, fontSize: 14.5 }}>
-          紅線 매칭 — 이 상대, 월하노인이 찾아드려요
+          紅線 매칭 — 이 상대, 홍서 아씨가 찾아드려요
         </a>
       )}
     </>
@@ -181,7 +181,7 @@ export default function ReportPager({ name, birth, token, chapters, scores, z })
     if (!p) return "";
     if (p.t === "intro") return "리포트 표지";
     if (p.t === "seo") return "나의 자미두수 명반";
-    if (p.t === "fin") return "월하노인의 편지";
+    if (p.t === "fin") return "홍서 아씨의 편지";
     return p.ch.title;
   };
   const next = pages[page + 1];
@@ -227,7 +227,7 @@ export default function ReportPager({ name, birth, token, chapters, scores, z })
             <div className="eyebrow" style={{ marginBottom: 14 }}>目次 · 감정서 차례</div>
             {pages.map((p, i) => {
               if (p.t === "intro") return null;
-              const label = p.t === "ch" ? `${p.ch.no} · ${p.ch.title}` : p.t === "seo" ? "序 · 나의 자미두수 명반" : "맺음 · 월하노인의 편지";
+              const label = p.t === "ch" ? `${p.ch.no} · ${p.ch.title}` : p.t === "seo" ? "序 · 나의 자미두수 명반" : "맺음 · 홍서 아씨의 편지";
               return (
                 <button key={i} onClick={() => { go(i); setToc(false); }}
                   style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", cursor: "pointer",
@@ -286,7 +286,7 @@ export default function ReportPager({ name, birth, token, chapters, scores, z })
           <div className="card" id="letter">
             <div style={{ marginBottom: 12 }}>
               <div className="mono" style={{ fontSize: 10.5, letterSpacing: ".3em", color: "var(--amethyst-hi)", marginBottom: 4 }}>맺음</div>
-              <h2 className="display" style={{ fontSize: 19, color: "var(--tx)" }}>월하노인의 편지</h2>
+              <h2 className="display" style={{ fontSize: 19, color: "var(--tx)" }}>홍서 아씨의 편지</h2>
             </div>
             <ChapterArt theme="letter" />
             {chapters.letter ? renderText(chapters.letter) : (

@@ -47,7 +47,8 @@ export default function MatchCta({ token }) {
         <h2 className="display" style={{ fontSize: 19, color: "var(--tx)", margin: "10px 0 4px" }}>
           제8장의 그 사람, 실제로 만나보실래요?
         </h2>
-        <p style={{ fontSize: 12.5, color: "var(--tx-dim)" }}>월하노인이 명반 궁합이 맞는 인연에게 붉은 실을 겁니다</p>
+        <img src="/char/thread.webp" alt="" width={350} height={288} style={{ display: "block", width: 168, height: "auto", margin: "0 auto 6px", WebkitMaskImage: "radial-gradient(ellipse 72% 66% at 50% 45%, black 58%, transparent 100%)", maskImage: "radial-gradient(ellipse 72% 66% at 50% 45%, black 58%, transparent 100%)" }} />
+        <p style={{ fontSize: 12.5, color: "var(--tx-dim)" }}>홍서 아씨가 명반 궁합이 맞는 인연에게 붉은 실을 걸어드려요</p>
       </div>
 
       <a href={`/m/${token}`} onClick={() => ev("report_match_click")}

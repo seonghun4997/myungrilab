@@ -16,9 +16,18 @@ export async function POST(req) {
     if (p.length < 10) return NextResponse.json({ ok: false, error: "전화번호를 확인해주세요." }, { status: 400 });
 
     const supa = sb();
-    const { data: leads } = await supa
+    let { data: leads, error: selErr } = await supa
       .from("leads").select("id, otp").eq("phone", p)
       .order("created_at", { ascending: false }).limit(1);
+    // otp 컬럼이 아직 없으면(SQL 미실행) 컬럼 없이 재조회해 원인을 표면화
+    if (selErr) {
+      const retry = await supa.from("leads").select("id").eq("phone", p)
+        .order("created_at", { ascending: false }).limit(1);
+      if (retry.data && retry.data.length) {
+        return NextResponse.json({ ok: false, error: "서고 준비 중이에요. 운영자에게 문의해주세요. (DB)" }, { status: 500 });
+      }
+      leads = [];
+    }
 
     if (leads && leads.length) {
       const lead = leads[0];
@@ -28,9 +37,12 @@ export async function POST(req) {
         return NextResponse.json({ ok: true }); // 조용히 무시 (기존 코드 유효)
       }
       const code = String(Math.floor(100000 + Math.random() * 900000));
-      await supa.from("leads").update({
+      const { error: upErr } = await supa.from("leads").update({
         otp: { code, exp: Date.now() + 5 * 60 * 1000, tries: 0, sentAt: Date.now() },
       }).eq("id", lead.id);
+      if (upErr) {
+        return NextResponse.json({ ok: false, error: "서고 준비 중이에요. 운영자에게 문의해주세요. (DB)" }, { status: 500 });
+      }
       await smsSafe(p, MSG.otp(code));
     }
     // 리드가 없어도 동일 응답

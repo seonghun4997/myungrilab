@@ -44,6 +44,7 @@ const INPUT_STEPS = ["gender", "birth", "time", "name", "concern", "phone"]; // 
 
 export default function Home() {
   const [step, setStep] = useState("intro");
+  const [hongseon, setHongseon] = useState(false); // 紅線 관문 경유 여부 — 인사말·맥락 분기
   const [form, setForm] = useState({
     gender: null, cal: "solar", leap: false,
     y: null, m: null, d: null, slot: null, timeUnknown: false,
@@ -79,6 +80,9 @@ export default function Home() {
       try {
         const fc = new URLSearchParams(window.location.search).get("focus");
         if (fc) sessionStorage.setItem("hs_focus", fc);
+        // 紅線 관문에서 온 손님 — 감정 랜딩(자미두수 설득)은 건너뛰고 바로 문답 시작
+        if (fc === "hongseon") { setHongseon(true); setStep("gender"); }
+        else if (sessionStorage.getItem("hs_focus") === "hongseon") setHongseon(true);
       } catch (e) {}
       const f = localStorage.getItem("hs_form");
       if (f) {
@@ -514,7 +518,7 @@ function ElderFlow({ step, form, setForm, goto, onSubmit, farthest = 0 }) {
   if (form.phone && idx > INPUT_STEPS.indexOf("phone")) rows.push({ k: "연락처", v: form.phone, s: "phone" });
   if (form.slot != null && idx > INPUT_STEPS.indexOf("time")) rows.push({ k: "생시", v: form.timeUnknown ? "미상(오시 추정)" : TIME_SLOTS[form.slot].label, s: "time" });
   if (form.y && idx > INPUT_STEPS.indexOf("birth")) rows.push({ k: "생년월일", v: `${form.y}년 ${form.m}월 ${form.d}일 (${form.cal === "solar" ? "양력" : "음력"})`, s: "birth" });
-  if (form.gender && idx > INPUT_STEPS.indexOf("gender")) rows.push({ k: "그대는", v: form.gender === "M" ? "남자" : "여자", s: "gender" });
+  if (form.gender && idx > INPUT_STEPS.indexOf("gender")) rows.push({ k: "성별", v: form.gender === "M" ? "남자" : "여자", s: "gender" });
 
   return (
     <section className="ask">
@@ -535,7 +539,7 @@ function ElderFlow({ step, form, setForm, goto, onSubmit, farthest = 0 }) {
                   maskImage: "radial-gradient(ellipse 64% 74% at 50% 34%, black 52%, transparent 97%)" }} />
             </div>
           )}
-          <p className="say">{ELDER.intro.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</p>
+          <p className="say">{(hongseon ? "인연을 이어드리려면,\n먼저 당신의 명반이 필요해요.\n금방 끝나요 — 제가 펴볼게요." : ELDER.intro).split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</p>
           </>
         ) : (
           <>
@@ -615,9 +619,11 @@ function BirthInput({ form, setForm, onDone }) {
         <button className={form.cal === "solar" ? "on" : ""} onClick={() => setForm({ ...form, cal: "solar" })}>양력</button>
         <button className={form.cal === "lunar" ? "on" : ""} onClick={() => setForm({ ...form, cal: "lunar" })}>음력</button>
       </div>
-      <input className="field" inputMode="numeric" placeholder="0000년 00월 00일" value={disp}
+      <input className="field" type="tel" inputMode="numeric" autoComplete="off" enterKeyHint="next"
+        placeholder="0000년 00월 00일" value={disp}
+        style={{ position: "relative", zIndex: 5 }}
         onChange={(e) => {
-          const nd = e.target.value.replace(/[^0-9]/g, "");
+          const nd = e.target.value.replace(/[^0-9]/g, "").slice(0, 8);
           // 지웠는데 포맷 글자(년/월/일)만 지워져 숫자가 그대로면 → 숫자를 하나 지운다
           if (e.target.value.length < disp.length && nd.length >= digits.length) setVal(digits.slice(0, -1));
           else setVal(nd);

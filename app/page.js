@@ -10,7 +10,7 @@ import { CONFIG } from "../lib/content";
 
 const LANTERNS = [
   { id: "total", icon: "🔮", t: "전통 사주 감정", d: "12개 영역·10년 대운 — 인생 전체를 한 권으로", accent: "#c4b0ff", main: true },
-  { id: "hongseon", icon: "🧧", t: "紅線 소개팅", d: "명반이 맞는 짝을 붉은 실로 이어드려요", accent: "#ff8ba3", href: "/hongseon" },
+  { id: "hongseon", icon: "🧧", t: "紅線 소개팅", d: "사진 대신 명반 — 가입 무료, 성사될 때만", accent: "#ff8ba3", href: "/hongseon" },
 ];
 // 준비 중 관심사 — 대표 감정의 가치 소구로 재활용
 const SOON = [

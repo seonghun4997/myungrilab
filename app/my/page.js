@@ -53,8 +53,9 @@ export default function MyLib() {
     if (p.length < 10) { setErr("전화번호를 확인해주세요."); return; }
     setBusy(true); setErr("");
     const r = await fetch("/api/my/code", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phone: p }) });
+    const j = await r.json().catch(() => ({}));
     setBusy(false);
-    if (!r.ok) { setErr("잠시 후 다시 시도해주세요."); return; }
+    if (!r.ok || !j.ok) { setErr(j.error || "잠시 후 다시 시도해주세요."); return; }
     setStep("code");
     setTimeout(() => codeRef.current && codeRef.current.focus(), 50);
   };
@@ -148,9 +149,9 @@ export default function MyLib() {
               </div>
             </Card>
           )) : (
-            <Card style={{ opacity: .75 }}>
-              <b style={{ fontSize: 13.5 }}>📜 감정서 준비 중</b>
-              <div style={{ fontSize: 12, color: "var(--tx-dim)", marginTop: 4 }}>입금 확인 후 문자로 알려드려요. 완성되면 여기에도 꽂혀요.</div>
+            <Card href="/reading">
+              <b style={{ fontSize: 13.5 }}>📜 감정서가 아직 없어요</b>
+              <div style={{ fontSize: 12, color: "var(--tx-dim)", marginTop: 4 }}>입금 확인 중이면 곧 꽂혀요 · 명반 전체가 궁금하면 감정 받기 ›</div>
             </Card>
           )}
 

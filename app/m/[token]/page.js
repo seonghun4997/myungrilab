@@ -89,6 +89,8 @@ function useMidnightTimer() {
 export default function MatchBox() {
   const { token } = useParams();
   const [data, setData] = useState(null);
+  const [rbHide, setRbHide] = useState(false);
+  useEffect(() => { try { if (localStorage.getItem("hs_hide_rb")) setRbHide(true); } catch (e) {} }, []);
   // 재방문용 — 홈에 다시 오면 "내 인연함 열기"로 바로 올 수 있게 기억해둔다
   useEffect(() => { try { if (token) localStorage.setItem("hs_my_match", token); } catch (e) {} }, [token]);
   const [err, setErr] = useState("");
@@ -465,6 +467,17 @@ export default function MatchBox() {
 
         {data.monthMatched > 0 && (
           <div className="hx-banner">이번 달 홍서 아씨가 이은 인연 {data.monthMatched}쌍</div>
+        )}
+
+        {/* 투필러 교차 유도② — 감정서 없는 회원에게만, 닫기 가능 */}
+        {!data.hasReport && !rbHide && (
+          <div style={{ position: "relative", border: "1px solid rgba(255,212,121,.45)", borderRadius: 14, padding: "13px 34px 13px 15px", margin: "12px 0", background: "rgba(255,212,121,.06)" }}>
+            <button onClick={() => { setRbHide(true); try { localStorage.setItem("hs_hide_rb", "1"); } catch (e) {} }}
+              aria-label="닫기" style={{ position: "absolute", top: 8, right: 10, background: "none", border: "none", color: "#a89f7a", fontSize: 14, cursor: "pointer", padding: 2 }}>✕</button>
+            <b style={{ fontSize: 13, color: "#8a6d1f" }}>이 궁합 풀이는 명반의 한 조각이에요</b>
+            <p style={{ fontSize: 12, color: "#7d7457", margin: "4px 0 8px", lineHeight: 1.6 }}>재물·직업·대운까지 — 내 명반 전체가 궁금하다면</p>
+            <a href="/reading" style={{ fontSize: 12.5, fontWeight: 700, color: "#8a6d1f", textDecoration: "none" }}>내 감정서 받아보기 →</a>
+          </div>
         )}
 
         {/* 지난 인연 타임라인 */}

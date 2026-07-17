@@ -1,8 +1,7 @@
 "use client";
 // ============================================================
 // /admin — 운영 콕핏 (ADMIN_KEY로 접근)
-// 탭: 📊 대시보드(KPI·퍼널·오늘 할 일) / 👤 리드 / 🧧 매칭
-// 자동화: 결제확인 체크 = 리포트 생성 + 문자 발송까지 체인
+// 탭: 📊 대시보드 / 👤 리드 / 🧧 매칭 / 📨 SMS
 // ============================================================
 import { useState, useEffect } from "react";
 import { CONFIG } from "../../lib/content";
@@ -11,7 +10,6 @@ const todayKST = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slic
 const isTodayKST = (iso) => iso && new Date(new Date(iso).getTime() + 9 * 3600 * 1000).toISOString().slice(0, 10) === todayKST();
 const won = (n) => (Number(n) || 0).toLocaleString("ko-KR") + "원";
 
-// 검색 — 이름 / 전화번호 / 주문코드(토큰 앞 6자리)
 function filterLeads(leads, q) {
   const norm = (q || "").trim().toLowerCase();
   if (!norm) return leads;
@@ -41,6 +39,38 @@ function applyLeadFilter(leads, f) {
   return leads;
 }
 
+// 스타일 토큰 — 어드민 전용 (라이트 고정)
+const C = {
+  bg: "#ffffff",
+  bgSub: "#f8fafc",
+  border: "#e2e8f0",
+  text: "#0f172a",
+  dim: "#64748b",
+  accent: "#7c3aed",
+  accentBg: "#ede9fe",
+  green: "#059669",
+  greenBg: "#dcfce7",
+  red: "#dc2626",
+  redBg: "#fee2e2",
+  gold: "#b45309",
+  goldBg: "#fef3c7",
+  blue: "#1d4ed8",
+  blueBg: "#dbeafe",
+};
+const card = { background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 12 };
+const chip = (active) => ({
+  padding: "5px 12px", fontSize: 12.5, borderRadius: 20, cursor: "pointer",
+  border: `1px solid ${active ? C.accent : C.border}`,
+  background: active ? C.accentBg : C.bgSub,
+  color: active ? C.accent : C.dim, fontWeight: active ? 600 : 400,
+});
+const btn = (variant = "ghost") => {
+  if (variant === "primary") return { padding: "9px 16px", fontSize: 13, borderRadius: 8, cursor: "pointer", border: "none", background: C.accent, color: "#fff", fontWeight: 600 };
+  if (variant === "danger") return { padding: "9px 16px", fontSize: 13, borderRadius: 8, cursor: "pointer", border: `1px solid ${C.red}`, background: C.redBg, color: C.red, fontWeight: 600 };
+  return { padding: "9px 16px", fontSize: 13, borderRadius: 8, cursor: "pointer", border: `1px solid ${C.border}`, background: C.bgSub, color: C.text, fontWeight: 500 };
+};
+const label = { fontSize: 11, fontWeight: 600, letterSpacing: ".1em", color: C.dim, textTransform: "uppercase", marginBottom: 6 };
+
 export default function Admin() {
   const [key, setKey] = useState("");
   const [authed, setAuthed] = useState(false);
@@ -50,11 +80,11 @@ export default function Admin() {
   const [leadFilter, setLeadFilter] = useState("all");
   const [busy, setBusy] = useState({});
   const [msg, setMsg] = useState("");
-  const [sel, setSel] = useState([]); // 매칭용 선택 (최대 2)
+  const [sel, setSel] = useState([]);
   const [preview, setPreview] = useState(null);
   const [matches, setMatches] = useState(null);
   const [funnel, setFunnel] = useState(null);
-  const [sms, setSms] = useState(null); // 문자 발송 실장부 (Solapi 미러)
+  const [sms, setSms] = useState(null);
 
   const loadWith = async (k) => {
     setMsg("불러오는 중...");
@@ -77,7 +107,6 @@ export default function Admin() {
   };
   const load = () => loadWith(key);
 
-  // 자동 로그인 — 이 기기에서 한 번 인증했으면 바로 콕핏 진입
   useEffect(() => {
     try {
       const saved = localStorage.getItem("hs_admin_key");
@@ -148,18 +177,13 @@ export default function Admin() {
       body: JSON.stringify({ id, paid }),
     });
     setLeads((ls) => ls.map((l) => (l.id === id ? { ...l, paid } : l)));
-    // 자동화 체인: 결제 확인 → 리포트 생성 → 문자 발송까지 이 체크 하나로 끝
     if (paid) {
       const lead = (leads || []).find((l) => l.id === id);
       if (lead && !lead.report && !busy[id]) genReport(id);
     }
   };
 
-  const copy = (text, label) => {
-    navigator.clipboard.writeText(text);
-    setMsg(label + " 복사됨");
-  };
-
+  const copy = (text, label) => { navigator.clipboard.writeText(text); setMsg(label + " 복사됨"); };
   const reportUrl = (token) => `${window.location.origin}/r/${token}`;
   const kakaoMsg = (l) =>
     `[${CONFIG.BRAND}] ${l.name}님, 홍서 아씨의 감정서가 완성됐어요. 아래 링크에서 확인해주세요 (본인 전용): ${reportUrl(l.token)} — 궁금한 점은 이 문자에 회신해주세요.`;
@@ -169,7 +193,6 @@ export default function Admin() {
   const matchedMsg = (name, token) =>
     `[${CONFIG.BRAND}] ${name}님, 붉은 실이 이어졌습니다! 인연함에서 성사 안내를 확인해주세요: ${typeof window !== "undefined" ? window.location.origin : ""}/m/${token}`;
 
-  // ── 파생 지표 ──
   const kpi = (() => {
     if (!leads) return null;
     const paidLeads = leads.filter((l) => l.paid);
@@ -178,8 +201,7 @@ export default function Admin() {
     const rated = leads.filter((l) => l.rating);
     return {
       newToday: leads.filter((l) => isTodayKST(l.created_at)).length,
-      revToday,
-      revAll,
+      revToday, revAll,
       sent: leads.filter((l) => l.report).length,
       rating: rated.length ? (rated.reduce((s, l) => s + l.rating, 0) / rated.length).toFixed(1) : "—",
       ratedN: rated.length,
@@ -196,331 +218,395 @@ export default function Admin() {
   };
 
   const jumpLeads = (f) => { setLeadFilter(f); setTab("leads"); };
-
   const selNames = sel.map((id) => (leads || []).find((l) => l.id === id)?.name).filter(Boolean);
 
-  const kpiCard = (label, value, sub, color) => (
-    <div className="card" style={{ padding: "14px 16px" }}>
-      <p className="mono" style={{ fontSize: 10.5, letterSpacing: ".15em", color: "var(--tx-dim)", marginBottom: 6 }}>{label}</p>
-      <p style={{ fontSize: 22, fontWeight: 700, color: color || "var(--tx)" }}>{value}</p>
-      {sub && <p className="mono" style={{ fontSize: 10.5, color: "var(--tx-dim)", marginTop: 3 }}>{sub}</p>}
+  // ── 탭 버튼 ──
+  const TabBtn = ({ id, label: lbl, badge }) => {
+    const active = tab === id;
+    return (
+      <button onClick={() => setTab(id)} style={{
+        flex: 1, padding: "10px 6px", fontSize: 13.5, cursor: "pointer",
+        background: "none", border: "none", borderBottom: `2px solid ${active ? C.accent : "transparent"}`,
+        color: active ? C.accent : C.dim, fontWeight: active ? 700 : 400,
+      }}>
+        {lbl}{badge ? <span style={{ marginLeft: 5, background: C.red, color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10.5, fontWeight: 700 }}>{badge}</span> : null}
+      </button>
+    );
+  };
+
+  // ── KPI 카드 ──
+  const KpiCard = ({ label: lbl, value, sub, color }) => (
+    <div style={{ ...card, marginBottom: 0 }}>
+      <p style={{ ...label, marginBottom: 4 }}>{lbl}</p>
+      <p style={{ fontSize: 22, fontWeight: 700, color: color || C.text, margin: "2px 0" }}>{value}</p>
+      {sub && <p style={{ fontSize: 11.5, color: C.dim, marginTop: 2 }}>{sub}</p>}
     </div>
   );
 
-  const tabBtn = (id, label, badge) => (
-    <button
-      onClick={() => setTab(id)}
-      style={{
-        flex: 1, padding: "11px 6px", fontSize: 14, cursor: "pointer", borderRadius: 10,
-        border: tab === id ? "1px solid rgba(196,176,255,.6)" : "1px solid rgba(196,176,255,.18)",
-        background: tab === id ? "rgba(139,108,255,.16)" : "transparent",
-        color: tab === id ? "var(--amethyst-hi)" : "var(--tx-dim)", fontWeight: tab === id ? 700 : 400,
-      }}
-    >
-      {label}{badge ? <span style={{ marginLeft: 5, fontSize: 11, color: "#ffd479" }}>{badge}</span> : null}
-    </button>
-  );
-
   return (
-    <main className="wrap" style={{ paddingTop: 40, paddingBottom: 110 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <div className="eyebrow">관리자</div>
-          <h1 className="display" style={{ fontSize: 24, margin: "8px 0 16px", color: "var(--tx)" }}>홍서당 콕핏</h1>
-        </div>
-        {authed && (
-          <button className="btn btn-ghost" style={{ width: "auto", padding: "8px 14px", fontSize: 12 }} onClick={load}>↻ 새로고침</button>
-        )}
-      </div>
+    <div style={{ background: C.bg, minHeight: "100vh", color: C.text }}>
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: "28px 20px 120px" }}>
 
-      {!authed && (
-        <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-          <input
-            type="password"
-            placeholder="관리자 키"
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && load()}
-            style={{ flex: 1, padding: 12, background: "rgba(139,108,255,0.08)", border: "1px solid rgba(196,176,255,0.35)", color: "var(--tx)", fontSize: 15 }}
-          />
-          <button className="btn" style={{ width: "auto", padding: "12px 22px" }} onClick={load}>입장</button>
-        </div>
-      )}
-      {msg && <p className="mono" style={{ fontSize: 13, color: "var(--amethyst-hi)", marginBottom: 14 }}>{msg}</p>}
-
-      {authed && leads && (
-        <>
-          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-            {tabBtn("dash", "📊 대시보드")}
-            {tabBtn("leads", "👤 리드", todo && todo.입금주장 ? `💰${todo.입금주장}` : null)}
-            {tabBtn("match", "🧧 매칭", todo && todo.문자발송_성사 ? todo.문자발송_성사 : null)}
+        {/* ── 헤더 ── */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".14em", color: C.dim, textTransform: "uppercase", marginBottom: 4 }}>관리자 콕핏</p>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text, margin: 0 }}>홍서당</h1>
           </div>
+          {authed && (
+            <button onClick={load} style={{ ...btn(), padding: "8px 14px", fontSize: 12.5 }}>↻ 새로고침</button>
+          )}
+        </div>
 
-          {/* ───────────────── 📊 대시보드 ───────────────── */}
-          {tab === "dash" && (
-            <>
-              {kpi && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-                  {kpiCard("오늘 신규 리드", `${kpi.newToday}명`, `누적 ${leads.length}명`)}
-                  {kpiCard("오늘 매출", won(kpi.revToday), "결제확인 + 접수시각 기준", "#ffd479")}
-                  {kpiCard("누적 매출", won(kpi.revAll), "결제확인 완료분", "#ffd479")}
-                  {kpiCard("감정서 발송", `${kpi.sent}건`, null, "var(--amethyst-hi)")}
-                  {kpiCard("평균 별점", kpi.rating === "—" ? "—" : `★ ${kpi.rating}`, `응답 ${kpi.ratedN}명`, "var(--gold)")}
-                  {kpiCard("성사 커플", `${kpi.couples}쌍`, null, "var(--thread)")}
+        {/* ── 로그인 ── */}
+        {!authed && (
+          <div style={{ ...card, display: "flex", gap: 10 }}>
+            <input
+              type="password"
+              placeholder="관리자 키"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && load()}
+              style={{ flex: 1, padding: "11px 14px", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 15, color: C.text, background: C.bgSub, outline: "none" }}
+            />
+            <button onClick={load} style={{ ...btn("primary"), whiteSpace: "nowrap" }}>입장</button>
+          </div>
+        )}
+
+        {msg && (
+          <div style={{ background: C.accentBg, border: `1px solid ${C.accent}`, borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: C.accent }}>
+            {msg}
+          </div>
+        )}
+
+        {authed && leads && (
+          <>
+            {/* ── 탭 바 ── */}
+            <div style={{ display: "flex", borderBottom: `1px solid ${C.border}`, marginBottom: 20, gap: 0 }}>
+              <TabBtn id="dash" label="📊 대시보드" />
+              <TabBtn id="leads" label="👤 리드" badge={todo?.입금주장 || null} />
+              <TabBtn id="match" label="🧧 매칭" badge={todo?.문자발송_성사 || null} />
+              <TabBtn id="sms" label="📨 SMS" />
+            </div>
+
+            {/* ─────────────── 📊 대시보드 ─────────────── */}
+            {tab === "dash" && (
+              <>
+                {/* KPI 그리드 */}
+                {kpi && (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 20 }}>
+                    <KpiCard label="오늘 신규 리드" value={`${kpi.newToday}명`} sub={`누적 ${leads.length}명`} />
+                    <KpiCard label="오늘 매출" value={won(kpi.revToday)} color={C.gold} />
+                    <KpiCard label="누적 매출" value={won(kpi.revAll)} color={C.gold} />
+                    <KpiCard label="감정서 발송" value={`${kpi.sent}건`} color={C.accent} />
+                    <KpiCard label="평균 별점" value={kpi.rating === "—" ? "—" : `★ ${kpi.rating}`} sub={`응답 ${kpi.ratedN}명`} color="#ca8a04" />
+                    <KpiCard label="성사 커플" value={`${kpi.couples}쌍`} color={C.red} />
+                  </div>
+                )}
+
+                {/* 오늘 할 일 */}
+                {todo && (
+                  <div style={card}>
+                    <p style={label}>오늘 할 일</p>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button style={{ ...chip(!!todo.입금주장), fontWeight: todo.입금주장 ? 700 : 400 }} onClick={() => jumpLeads("claim")}>
+                        💰 입금주장 {todo.입금주장}건
+                      </button>
+                      <button style={chip(false)} onClick={() => jumpLeads("wait")}>
+                        ⏳ 입금대기 {todo.입금대기}건
+                      </button>
+                      <button style={{ ...chip(!!todo.문자발송_성사), fontWeight: todo.문자발송_성사 ? 700 : 400 }} onClick={() => setTab("match")}>
+                        💌 성사 문자 {todo.문자발송_성사}건
+                      </button>
+                      <button style={chip(false)} onClick={() => setTab("match")}>
+                        ⏸ 응답 대기 {todo.응답대기_카드}건
+                      </button>
+                    </div>
+                    <p style={{ fontSize: 11.5, color: C.dim, marginTop: 12, lineHeight: 1.6 }}>
+                      흐름: 통장 알림 → 💰 입금주장 대조 → [결제 확인] 체크 → 리포트 생성·문자 자동
+                    </p>
+                  </div>
+                )}
+
+                {/* 퍼널 */}
+                {funnel && (
+                  <div style={card}>
+                    <p style={label}>고객 여정 퍼널</p>
+                    <p style={{ fontSize: 11.5, color: C.dim, marginBottom: 14 }}>
+                      방문→스크롤→문답 상단은 Meta 광고관리자 + Vercel Analytics에서 확인
+                    </p>
+                    {(() => {
+                      const base = funnel[0]?.n || 0;
+                      return funnel.map((f, i) => {
+                        const prev = i === 0 ? null : funnel[i - 1].n;
+                        const pctBase = base ? Math.round((f.n / base) * 100) : 0;
+                        const pctPrev = prev ? Math.round((f.n / prev) * 100) : null;
+                        return (
+                          <div key={f.id} style={{ marginBottom: 10 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4 }}>
+                              <span style={{ color: C.text }}>{f.label}</span>
+                              <span style={{ color: C.accent, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+                                {f.n}{f.unit || "명"}
+                                {pctPrev != null && <span style={{ color: C.dim, fontWeight: 400 }}> · 직전 {pctPrev}%</span>}
+                              </span>
+                            </div>
+                            <div style={{ height: 6, background: C.border, borderRadius: 4, overflow: "hidden" }}>
+                              <div style={{ height: "100%", width: `${Math.max(pctBase, f.n > 0 ? 2 : 0)}%`, background: i < 5 ? C.accent : C.red, borderRadius: 4 }} />
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ─────────────── 👤 리드 ─────────────── */}
+            {tab === "leads" && (
+              <>
+                {/* 필터 */}
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                  {LEAD_FILTERS.map((f) => (
+                    <button key={f.id} onClick={() => setLeadFilter(f.id)} style={chip(leadFilter === f.id)}>
+                      {f.label} {applyLeadFilter(leads, f.id).length}
+                    </button>
+                  ))}
                 </div>
-              )}
 
-              {todo && (
-                <div className="card" style={{ marginBottom: 16, border: "1px solid rgba(255,212,121,.4)" }}>
-                  {sms && (
-                    <div style={{ border: `1px solid ${sms.senderIssue ? "rgba(255,90,122,.6)" : "rgba(196,176,255,.3)"}`, borderRadius: 14, padding: "13px 15px", marginBottom: 16, background: sms.senderIssue ? "rgba(255,90,122,.06)" : "rgba(139,108,255,.05)" }}>
-                      <p className="mono" style={{ fontSize: 10.5, letterSpacing: ".2em", color: sms.senderIssue ? "#ff8ba3" : "var(--gold)", marginBottom: 8 }}>
-                        📨 문자 발송 실장부 (Solapi) · 발신번호: {sms.sender}
+                {/* 검색 */}
+                <input
+                  placeholder="🔍 검색 — 이름 · 전화번호 · 주문코드"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  style={{ width: "100%", padding: "11px 14px", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 14, color: C.text, background: C.bgSub, marginBottom: 14, boxSizing: "border-box", outline: "none" }}
+                />
+
+                {leads.length === 0 && <p style={{ color: C.dim }}>아직 리드가 없습니다.</p>}
+
+                {filterLeads(applyLeadFilter(leads, leadFilter), q).map((l) => {
+                  const b = l.birth || {};
+                  return (
+                    <div key={l.id} style={card}>
+                      {/* 상단: 이름 + 태그 + 시각 */}
+                      <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                          <input type="checkbox" checked={sel.includes(l.id)} onChange={() => toggleSel(l.id)} title="매칭용 선택" />
+                          <span style={{ fontSize: 16, fontWeight: 700, color: C.text }}>{l.name || "—"}</span>
+                          <span style={{ fontSize: 14, color: C.dim }}>{l.phone}</span>
+                          {l.token && (
+                            <button onClick={() => copy(l.token.slice(0, 6).toUpperCase(), "주문코드")}
+                              style={{ fontSize: 11, border: `1px solid ${C.border}`, background: C.bgSub, color: C.dim, borderRadius: 6, padding: "2px 7px", cursor: "pointer" }}>
+                              {l.token.slice(0, 6).toUpperCase()}
+                            </button>
+                          )}
+                          {l.pay_claim && !l.paid && (
+                            <span style={{ fontSize: 11, background: C.goldBg, color: C.gold, border: `1px solid ${C.gold}`, borderRadius: 6, padding: "2px 7px", fontWeight: 700 }}>
+                              💰 {l.pay_claim.method === "toss" ? "토스" : "무통장"} {(Number(l.pay_claim.price) || 0).toLocaleString("ko-KR")}원
+                              {l.pay_claim.at ? ` · ${new Date(l.pay_claim.at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}` : ""}
+                            </span>
+                          )}
+                          {l.rating && <span style={{ fontSize: 11, color: C.gold, fontWeight: 600 }}>★{l.rating}</span>}
+                          {l.match_optin && (
+                            <span style={{ fontSize: 11, background: "#fff1f2", color: C.red, border: `1px solid ${C.red}`, borderRadius: 6, padding: "2px 7px" }}>紅線</span>
+                          )}
+                        </div>
+                        <span style={{ fontSize: 11.5, color: C.dim }}>
+                          {new Date(l.created_at).toLocaleString("ko-KR")}
+                        </span>
+                      </div>
+
+                      {/* 사주 정보 */}
+                      <p style={{ fontSize: 12.5, color: C.dim, margin: "0 0 8px", fontVariantNumeric: "tabular-nums" }}>
+                        {b.y}.{b.m}.{b.d} · {b.slot || "—"} · {b.gender === "M" ? "남" : "여"}
+                        {l.quiz_hits ? ` · 상품${l.quiz_hits}단` : ""}
+                        {l.sal_names?.length ? ` · ${l.sal_names.join(" · ")}` : ""}
                       </p>
-                      {sms.error && <p style={{ fontSize: 12, color: "#ff8ba3" }}>{sms.error}</p>}
-                      {sms.senderIssue && (
-                        <p style={{ fontSize: 12, color: "#ff8ba3", lineHeight: 1.7, marginBottom: 8 }}>
-                          ⚠️ <b>발신번호 미등록으로 문자가 전부 막혀 있어요.</b> Solapi 콘솔 → [발신번호] 등록(휴대폰 인증) → Vercel 환경변수 SOLAPI_SENDER를 그 번호(숫자만)로 교체 → Redeploy.
+
+                      {b.utm?.utm_source && (
+                        <p style={{ fontSize: 11, color: C.blue, margin: "0 0 6px" }}>
+                          유입: {[b.utm.utm_source, b.utm.utm_medium, b.utm.utm_campaign, b.utm.utm_content].filter(Boolean).join(" / ")}
                         </p>
                       )}
-                      {(sms.list || []).slice(0, 12).map((m, i) => (
-                        <div key={i} style={{ display: "flex", gap: 8, fontSize: 11.5, padding: "4px 0", borderTop: i ? "1px solid rgba(196,176,255,.12)" : "none", alignItems: "baseline" }}>
-                          <span className="mono" style={{ color: "var(--tx-dim)", flexShrink: 0 }}>{m.at}</span>
-                          <span className="mono" style={{ flexShrink: 0 }}>{m.to}</span>
-                          <span style={{ color: m.fail ? "#ff8ba3" : "#5DCAA5", flexShrink: 0, fontWeight: 700 }}>{m.status}</span>
-                          <span style={{ color: "var(--tx-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.text}</span>
-                        </div>
-                      ))}
-                      {sms.list && !sms.list.length && <p style={{ fontSize: 12, color: "var(--tx-dim)" }}>발송 기록이 없어요.</p>}
-                    </div>
-                  )}
-                  <p className="mono" style={{ fontSize: 10.5, letterSpacing: ".2em", color: "var(--gold)", marginBottom: 10 }}>오늘 할 일 — 누르면 바로 이동</p>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <button className="btn btn-ghost" style={{ width: "auto", padding: "8px 12px", fontSize: 13, color: todo.입금주장 ? "#ffd479" : "var(--tx-dim)" }} onClick={() => jumpLeads("claim")}>💰 입금했다는 분 {todo.입금주장}</button>
-                    <button className="btn btn-ghost" style={{ width: "auto", padding: "8px 12px", fontSize: 13, color: todo.입금대기 ? "var(--gold)" : "var(--tx-dim)" }} onClick={() => jumpLeads("wait")}>입금 확인 대기 {todo.입금대기}</button>
-                    <button className="btn btn-ghost" style={{ width: "auto", padding: "8px 12px", fontSize: 13, color: todo.문자발송_성사 ? "var(--thread)" : "var(--tx-dim)" }} onClick={() => setTab("match")}>성사 문자 보낼 것 {todo.문자발송_성사}</button>
-                    <button className="btn btn-ghost" style={{ width: "auto", padding: "8px 12px", fontSize: 13, color: "var(--tx-dim)" }} onClick={() => setTab("match")}>응답 대기 카드 {todo.응답대기_카드}</button>
-                  </div>
-                  <p style={{ fontSize: 11.5, color: "var(--tx-dim)", marginTop: 10 }}>흐름: 통장 알림 → 💰 목록에서 금액·시각 대조 → [결제 확인] 체크 (리포트 생성·문자까지 자동)</p>
-                </div>
-              )}
+                      {b.concern && (
+                        <p style={{ fontSize: 13, color: C.text, background: C.bgSub, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 12px", margin: "0 0 10px" }}>
+                          고민: {b.concern}
+                        </p>
+                      )}
+                      {l.intro && (
+                        <p style={{ fontSize: 13, color: C.text, background: "#fff1f2", border: `1px solid #fecdd3`, borderRadius: 8, padding: "8px 12px", margin: "0 0 10px" }}>
+                          紅線 소개: {l.intro}
+                        </p>
+                      )}
 
-              {funnel && (
-                <div className="card" style={{ marginBottom: 20 }}>
-                  <h2 className="display" style={{ fontSize: 18, color: "var(--tx)", marginBottom: 4 }}>고객 여정 깔때기</h2>
-                  <p className="mono" style={{ fontSize: 11, color: "var(--tx-dim)", marginBottom: 12 }}>
-                    상단 퍼널(방문→스크롤→문답)은 Meta 광고관리자 + Vercel Analytics 이벤트로 확인
-                  </p>
-                  {(() => {
-                    const base = funnel[0]?.n || 0;
-                    return funnel.map((f, i) => {
-                      const prev = i === 0 ? null : funnel[i - 1].n;
-                      const pctBase = base ? Math.round((f.n / base) * 100) : 0;
-                      const pctPrev = prev ? Math.round((f.n / prev) * 100) : null;
-                      return (
-                        <div key={f.id} style={{ marginBottom: 8 }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 3 }}>
-                            <span style={{ color: "var(--tx)" }}>{f.label}</span>
-                            <span className="mono" style={{ color: "var(--amethyst-hi)" }}>
-                              {f.n}{f.unit || "명"}
-                              {pctPrev != null && <span style={{ color: "var(--tx-dim)" }}> · 직전 대비 {pctPrev}%</span>}
-                            </span>
-                          </div>
-                          <div style={{ height: 7, background: "rgba(139,108,255,0.12)", borderRadius: 4, overflow: "hidden" }}>
-                            <i style={{ display: "block", height: "100%", width: `${Math.max(pctBase, f.n > 0 ? 3 : 0)}%`, background: i < 5 ? "var(--amethyst-hi, #b39dff)" : "#ff8b98" }} />
-                          </div>
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-              )}
-            </>
-          )}
-
-          {/* ───────────────── 👤 리드 ───────────────── */}
-          {tab === "leads" && (
-            <>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-                {LEAD_FILTERS.map((f) => (
-                  <button key={f.id} onClick={() => setLeadFilter(f.id)}
-                    style={{
-                      padding: "6px 12px", fontSize: 12.5, borderRadius: 20, cursor: "pointer",
-                      border: leadFilter === f.id ? "1px solid rgba(255,212,121,.6)" : "1px solid rgba(196,176,255,.25)",
-                      background: leadFilter === f.id ? "rgba(255,212,121,.12)" : "transparent",
-                      color: leadFilter === f.id ? "#ffd479" : "var(--tx-dim)",
-                    }}>
-                    {f.label} {applyLeadFilter(leads, f.id).length}
-                  </button>
-                ))}
-              </div>
-              <input
-                className="field"
-                placeholder="🔍 검색 — 이름 · 전화번호 · 주문코드"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                style={{ marginBottom: 12 }}
-              />
-              {leads.length === 0 && <p style={{ color: "var(--tx-dim)" }}>아직 들어온 디비가 없습니다.</p>}
-              {filterLeads(applyLeadFilter(leads, leadFilter), q).map((l) => {
-                const b = l.birth || {};
-                return (
-                  <div className="card" key={l.id} style={{ marginBottom: 12 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-                      <div>
-                        <input type="checkbox" checked={sel.includes(l.id)} onChange={() => toggleSel(l.id)} style={{ marginRight: 8 }} title="매칭용 선택" />
-                        <b style={{ fontSize: 17, color: "var(--amethyst-hi)" }}>{l.name}</b>
-                        {l.token && (
-                          <button className="mono" onClick={() => copy(l.token.slice(0, 6).toUpperCase(), "주문코드")}
-                            style={{ fontSize: 10.5, marginLeft: 8, color: "var(--gold)", border: "1px solid rgba(255,212,121,.5)", background: "transparent", borderRadius: 6, padding: "1px 6px", cursor: "pointer" }}>
-                            {l.token.slice(0, 6).toUpperCase()}
+                      {/* 액션 */}
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", paddingTop: 6, borderTop: `1px solid ${C.border}` }}>
+                        <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13, color: l.paid ? C.green : C.dim, cursor: "pointer" }}>
+                          <input type="checkbox" checked={!!l.paid} onChange={(e) => togglePaid(l.id, e.target.checked)} />
+                          결제 확인{!l.report && " (→ 리포트·문자 자동)"}
+                        </label>
+                        {!l.report ? (
+                          <button style={btn("primary")} disabled={busy[l.id]} onClick={() => genReport(l.id)}>
+                            {busy[l.id] ? "생성 중…" : "리포트 생성"}
                           </button>
-                        )}
-                        {l.pay_claim && !l.paid && (
-                          <span className="mono" style={{ fontSize: 10.5, marginLeft: 6, color: "#ffd479", border: "1px solid #ffd479", borderRadius: 6, padding: "1px 6px" }}>
-                            💰 {l.pay_claim.method === "toss" ? "토스" : "무통장"} {(Number(l.pay_claim.price) || 0).toLocaleString("ko-KR")}원
-                            {l.pay_claim.at ? ` · ${new Date(l.pay_claim.at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}` : ""}
-                          </span>
-                        )}
-                        {l.rating && <span className="mono" style={{ fontSize: 10.5, marginLeft: 6, color: "var(--gold)" }}>★{l.rating}</span>}
-                        {l.match_optin && <span className="mono" style={{ fontSize: 10, marginLeft: 8, color: "var(--thread)", border: "1px solid var(--thread)", borderRadius: 6, padding: "1px 6px" }}>紅線신청</span>}
-                        <span className="mono" style={{ fontSize: 13, marginLeft: 10, color: "var(--tx)" }}>{l.phone}</span>
-                      </div>
-                      <span className="mono" style={{ fontSize: 11, color: "var(--tx-dim)" }}>
-                        {new Date(l.created_at).toLocaleString("ko-KR")}
-                      </span>
-                    </div>
-                    <p className="mono" style={{ fontSize: 12.5, color: "var(--tx-dim)", margin: "8px 0" }}>
-                      {b.y}.{b.m}.{b.d} · {b.slot || "-"} · {b.gender === "M" ? "남" : "여"} ·{l.quiz_hits ? ` 상품${l.quiz_hits}단 ·` : ""}
-                      {l.sal_names?.length ? l.sal_names.join(" · ") : "-"}
-                    </p>
-                    {b.utm?.utm_source && (
-                      <p className="mono" style={{ fontSize: 10.5, color: "var(--gold)", margin: "2px 0 6px" }}>
-                        유입: {[b.utm.utm_source, b.utm.utm_medium, b.utm.utm_campaign, b.utm.utm_content].filter(Boolean).join(" / ")}
-                      </p>
-                    )}
-                    {b.concern && <p style={{ fontSize: 13, color: "var(--tx)", background: "rgba(139,108,255,0.08)", border: "1px solid rgba(196,176,255,0.3)", borderRadius: 10, padding: "8px 12px", margin: "6px 0 10px" }}>고민: {b.concern}</p>}
-                    {l.intro && <p style={{ fontSize: 13, color: "var(--tx)", background: "rgba(255,77,94,0.08)", border: "1px solid rgba(255,120,134,0.3)", borderRadius: 10, padding: "8px 12px", margin: "6px 0 10px" }}>紅線 자기소개: {l.intro}</p>}
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                      <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13, color: l.paid ? "var(--amethyst-hi)" : "var(--tx-dim)" }}>
-                        <input type="checkbox" checked={!!l.paid} onChange={(e) => togglePaid(l.id, e.target.checked)} />
-                        결제 확인{!l.report && " (체크 = 생성·문자 자동)"}
-                      </label>
-                      {!l.report ? (
-                        <button className="btn btn-seal" style={{ width: "auto", padding: "9px 16px", fontSize: 14 }} disabled={busy[l.id]} onClick={() => genReport(l.id)}>
-                          {busy[l.id] ? "생성 중… (30초)" : "리포트 생성"}
-                        </button>
-                      ) : (
-                        <>
-                          <button className="btn btn-ghost" style={{ width: "auto", padding: "9px 14px", fontSize: 13 }} onClick={() => copy(reportUrl(l.token), "링크")}>링크 복사</button>
-                          <button className="btn btn-ghost" style={{ width: "auto", padding: "9px 14px", fontSize: 13 }} onClick={() => copy(kakaoMsg(l), "문자 문구")}>문자 문구 복사</button>
-                          <button className="btn btn-ghost" style={{ width: "auto", padding: "9px 14px", fontSize: 13, cursor: "pointer" }}
-                            onClick={async () => {
+                        ) : (
+                          <>
+                            <button style={btn()} onClick={() => copy(reportUrl(l.token), "링크")}>링크 복사</button>
+                            <button style={btn()} onClick={() => copy(kakaoMsg(l), "문자 문구")}>문자 문구</button>
+                            <button style={btn()} onClick={async () => {
                               if (!window.confirm(`${l.name} (${l.phone})에게 서버에서 바로 문자를 보낼까요?`)) return;
                               try {
                                 const r = await fetch("/api/admin/send", { method: "POST", headers: { "content-type": "application/json", "x-admin-key": key }, body: JSON.stringify({ to: l.phone, text: kakaoMsg(l) }) });
                                 const j = await r.json();
-                                window.alert(r.ok ? "발송 완료 — 실장부에서 상태를 확인하세요" : "실패: " + (j.error || r.status));
+                                window.alert(r.ok ? "발송 완료" : "실패: " + (j.error || r.status));
                               } catch (e) { window.alert("실패: " + e.message); }
-                            }}>서버로 발송 📨</button>
-                          <a className="btn btn-ghost" style={{ width: "auto", padding: "9px 14px", fontSize: 13, textDecoration: "none" }} href={smsHref(l.phone, kakaoMsg(l))}>📱 폰으로</a>
-                          <a className="mono" style={{ fontSize: 12, color: "var(--amethyst-hi)" }} href={`/r/${l.token}`} target="_blank" rel="noreferrer">열람 ↗</a>
-                          <button className="mono" style={{ fontSize: 11.5, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", color: l.match_optin ? "#ffb56b" : "var(--tx-dim)" }}
-                            onClick={async () => {
-                              const off = !!l.match_optin;
-                              if (!window.confirm(off ? `${l.name}을(를) 매칭에서 제외할까요?\n(후보·카드에서 즉시 빠지고, 걸려 있던 미성사 실도 회수돼요. 성사된 기록은 보존)` : `${l.name}을(를) 매칭 풀에 복귀시킬까요?`)) return;
-                              const r = await fetch("/api/admin/leads", { method: "PATCH", headers: { "content-type": "application/json", "x-admin-key": key }, body: JSON.stringify({ action: off ? "matchOff" : "matchOn", id: l.id }) });
-                              if (!r.ok) { const j = await r.json(); window.alert("실패: " + (j.error || r.status)); return; }
-                              load();
-                            }}>{l.match_optin ? "🚫 매칭 제외" : "↩ 매칭 복귀"}</button>
-                          <button className="mono" style={{ fontSize: 11.5, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", color: "#ff8ba3" }}
-                            onClick={async () => {
-                              if (!window.confirm(`⚠️ ${l.name}(${l.phone}) 회원을 완전 삭제할까요?\n감정서·매칭 기록까지 전부 사라지고 복구할 수 없어요.`)) return;
-                              if (!window.confirm(`정말로요? [확인]을 누르면 즉시 삭제됩니다 — ${l.name}`)) return;
-                              const r = await fetch("/api/admin/leads", { method: "PATCH", headers: { "content-type": "application/json", "x-admin-key": key }, body: JSON.stringify({ action: "delete", id: l.id }) });
-                              if (!r.ok) { const j = await r.json(); window.alert("실패: " + (j.error || r.status)); return; }
-                              load();
-                            }}>🗑 삭제</button>
-                        </>
+                            }}>서버 발송 📨</button>
+                            <a style={{ ...btn(), textDecoration: "none" }} href={smsHref(l.phone, kakaoMsg(l))}>📱 폰으로</a>
+                            <a style={{ fontSize: 12.5, color: C.accent, textDecoration: "none" }} href={`/r/${l.token}`} target="_blank" rel="noreferrer">열람 ↗</a>
+                            <button style={{ fontSize: 12, background: "none", border: "none", cursor: "pointer", color: l.match_optin ? C.red : C.dim, textDecoration: "underline", padding: 0 }}
+                              onClick={async () => {
+                                const off = !!l.match_optin;
+                                if (!window.confirm(off ? `${l.name}을(를) 매칭에서 제외할까요?` : `${l.name}을(를) 매칭 풀에 복귀시킬까요?`)) return;
+                                const r = await fetch("/api/admin/leads", { method: "PATCH", headers: { "content-type": "application/json", "x-admin-key": key }, body: JSON.stringify({ action: off ? "matchOff" : "matchOn", id: l.id }) });
+                                if (!r.ok) { const j = await r.json(); window.alert("실패: " + (j.error || r.status)); return; }
+                                load();
+                              }}>{l.match_optin ? "🚫 매칭 제외" : "↩ 매칭 복귀"}</button>
+                            <button style={{ fontSize: 12, background: "none", border: "none", cursor: "pointer", color: C.red, textDecoration: "underline", padding: 0 }}
+                              onClick={async () => {
+                                if (!window.confirm(`⚠️ ${l.name}(${l.phone}) 완전 삭제할까요?\n복구 불가.`)) return;
+                                if (!window.confirm(`정말로요? [확인] 시 즉시 삭제 — ${l.name}`)) return;
+                                const r = await fetch("/api/admin/leads", { method: "PATCH", headers: { "content-type": "application/json", "x-admin-key": key }, body: JSON.stringify({ action: "delete", id: l.id }) });
+                                if (!r.ok) { const j = await r.json(); window.alert("실패: " + (j.error || r.status)); return; }
+                                load();
+                              }}>🗑 삭제</button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+
+            {/* ─────────────── 🧧 매칭 ─────────────── */}
+            {tab === "match" && (
+              <>
+                <p style={{ fontSize: 12.5, color: C.dim, marginBottom: 14, lineHeight: 1.6 }}>
+                  수동 매칭: 리드 탭에서 2명 체크 → 하단 바 [궁합 확인] / [카드 발송]<br />
+                  자동 매칭·카드 알림은 매일 저녁 크론이 처리합니다.
+                </p>
+
+                {preview && (
+                  <div style={{ ...card, background: C.accentBg, border: `1px solid ${C.accent}` }}>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: C.accent }}>{preview.grade} · {preview.score}점 {preview.aName && `· ${preview.aName} ↔ ${preview.bName}`}</p>
+                    <p style={{ fontSize: 13.5, marginTop: 6, color: C.text }}>{preview.note}</p>
+                    {preview.aToken && (
+                      <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <button style={btn()} onClick={() => copy(`${window.location.origin}/m/${preview.aToken}`, "A 링크")}>A 링크 복사</button>
+                        <button style={btn()} onClick={() => copy(`${window.location.origin}/m/${preview.bToken}`, "B 링크")}>B 링크 복사</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {(!matches || matches.length === 0) && <p style={{ color: C.dim }}>아직 매칭이 없습니다.</p>}
+                {matches && matches.map((m) => {
+                  const matched = m.a_accept === true && m.b_accept === true;
+                  const rejected = m.a_accept === false || m.b_accept === false;
+                  return (
+                    <div key={m.id} style={card}>
+                      <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{m.aName} ↔ {m.bName}</span>
+                        <span style={{
+                          fontSize: 11.5, fontWeight: 600, padding: "2px 8px", borderRadius: 6,
+                          background: matched ? C.greenBg : rejected ? C.redBg : C.bgSub,
+                          color: matched ? C.green : rejected ? C.red : C.dim,
+                        }}>
+                          {matched ? "성사 ✓" : rejected ? "거절" : "응답 대기"}
+                        </span>
+                      </div>
+                      <p style={{ fontSize: 11.5, color: C.dim, marginBottom: 8 }}>
+                        A응답: {m.a_accept == null ? "—" : m.a_accept ? "수락" : "거절"} ·
+                        B응답: {m.b_accept == null ? "—" : m.b_accept ? "수락" : "거절"} ·
+                        {new Date(m.created_at).toLocaleString("ko-KR")}
+                      </p>
+                      {m.note && <p style={{ fontSize: 12.5, color: C.dim, marginBottom: 10 }}>{m.note}</p>}
+                      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", paddingTop: 6, borderTop: `1px solid ${C.border}` }}>
+                        <label style={{ display: "flex", gap: 5, alignItems: "center", fontSize: 13, cursor: "pointer", color: m.a_paid ? C.green : C.dim }}>
+                          <input type="checkbox" checked={!!m.a_paid} onChange={(e) => togglePaidM(m.id, "aPaid", e.target.checked)} /> A 성사비
+                        </label>
+                        <label style={{ display: "flex", gap: 5, alignItems: "center", fontSize: 13, cursor: "pointer", color: m.b_paid ? C.green : C.dim }}>
+                          <input type="checkbox" checked={!!m.b_paid} onChange={(e) => togglePaidM(m.id, "bPaid", e.target.checked)} /> B 성사비
+                        </label>
+                        {[["A", m.aPhone, m.aName, m.aToken], ["B", m.bPhone, m.bName, m.bToken]].map(([side, ph, nm, tk]) => (
+                          <button key={side} style={{ ...btn(), fontSize: 12 }} onClick={async () => {
+                            const body = m.a_accept && m.b_accept ? matchedMsg(nm, tk) : cardMsg(nm, tk);
+                            if (!window.confirm(`${side}측 ${nm}(${ph})에게 문자를 보낼까요?`)) return;
+                            try {
+                              const r = await fetch("/api/admin/send", { method: "POST", headers: { "content-type": "application/json", "x-admin-key": key }, body: JSON.stringify({ to: ph, text: body }) });
+                              const j = await r.json();
+                              window.alert(r.ok ? `${side} 발송 완료` : "실패: " + (j.error || r.status));
+                            } catch (e) { window.alert("실패: " + e.message); }
+                          }}>{side} 서버발송 📨</button>
+                        ))}
+                        {m.kakao_a && <span style={{ fontSize: 11.5, color: C.gold }}>A카톡:{m.kakao_a}</span>}
+                        {m.kakao_b && <span style={{ fontSize: 11.5, color: C.gold }}>B카톡:{m.kakao_b}</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+
+            {/* ─────────────── 📨 SMS ─────────────── */}
+            {tab === "sms" && (
+              <>
+                {!sms && <p style={{ color: C.dim }}>불러오는 중…</p>}
+                {sms?.error && <p style={{ color: C.red }}>{sms.error}</p>}
+                {sms && !sms.error && (
+                  <>
+                    <div style={{ ...card, background: sms.senderIssue ? C.redBg : C.bgSub, border: `1px solid ${sms.senderIssue ? C.red : C.border}`, marginBottom: 16 }}>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: sms.senderIssue ? C.red : C.dim, marginBottom: 6 }}>
+                        발신번호: {sms.sender}
+                        {sms.senderIssue && " ⚠️ 미등록"}
+                      </p>
+                      {sms.senderIssue && (
+                        <p style={{ fontSize: 12.5, color: C.red, lineHeight: 1.7 }}>
+                          Solapi 콘솔 → [발신번호] 등록(휴대폰 인증) → Vercel 환경변수 SOLAPI_SENDER 교체 → Redeploy
+                        </p>
                       )}
                     </div>
-                  </div>
-                );
-              })}
-            </>
-          )}
 
-          {/* ───────────────── 🧧 매칭 ───────────────── */}
-          {tab === "match" && (
-            <>
-              <p style={{ fontSize: 12.5, color: "var(--tx-dim)", marginBottom: 10 }}>
-                수동 매칭: 리드 탭에서 2명 체크 → 하단 바의 [궁합 확인]/[카드 발송]. 자동 매칭·카드 알림은 매일 저녁 크론이 처리합니다. (프로필 미작성자도 발송 가능 — 카드를 열 때 프로필을 만들게 됩니다)
-              </p>
-              {preview && (
-                <div className="card" style={{ marginBottom: 14 }}>
-                  <p className="mono" style={{ fontSize: 12, color: "var(--gold)" }}>{preview.grade} · {preview.score}점 {preview.aName && `· ${preview.aName} ↔ ${preview.bName}`}</p>
-                  <p style={{ fontSize: 13.5, marginTop: 6 }}>{preview.note}</p>
-                  {preview.aToken && (
-                    <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button className="btn btn-ghost" style={{ width: "auto", padding: "8px 12px", fontSize: 12 }} onClick={() => copy(`${window.location.origin}/m/${preview.aToken}`, "A 인연함 링크")}>A 링크 복사</button>
-                      <button className="btn btn-ghost" style={{ width: "auto", padding: "8px 12px", fontSize: 12 }} onClick={() => copy(`${window.location.origin}/m/${preview.bToken}`, "B 인연함 링크")}>B 링크 복사</button>
-                    </div>
-                  )}
-                </div>
-              )}
-              {(!matches || matches.length === 0) && <p style={{ color: "var(--tx-dim)" }}>아직 매칭이 없습니다.</p>}
-              {matches && matches.map((m) => (
-                <div className="card" key={m.id} style={{ marginBottom: 10, padding: "14px 16px" }}>
-                  <p className="mono" style={{ fontSize: 11, color: "var(--tx-dim)" }}>
-                    {m.aName} ↔ {m.bName} · {new Date(m.created_at).toLocaleString("ko-KR")} · {m.a_accept === true && m.b_accept === true ? "성사 ✓" : m.a_accept === false || m.b_accept === false ? "거절" : "응답 대기"}
-                    {" · A응답:" + (m.a_accept == null ? "—" : m.a_accept ? "수락" : "거절")}
-                    {" · B응답:" + (m.b_accept == null ? "—" : m.b_accept ? "수락" : "거절")}
-                  </p>
-                  <p style={{ fontSize: 12.5, margin: "4px 0 8px", color: "var(--tx-dim)" }}>{m.note}</p>
-                  <div style={{ display: "flex", gap: 14, fontSize: 13, flexWrap: "wrap" }}>
-                    <label style={{ display: "flex", gap: 5, alignItems: "center" }}>
-                      <input type="checkbox" checked={!!m.a_paid} onChange={(e) => togglePaidM(m.id, "aPaid", e.target.checked)} /> A 성사비
-                    </label>
-                    <label style={{ display: "flex", gap: 5, alignItems: "center" }}>
-                      <input type="checkbox" checked={!!m.b_paid} onChange={(e) => togglePaidM(m.id, "bPaid", e.target.checked)} /> B 성사비
-                    </label>
-                    {[["A", m.aPhone, m.aName, m.aToken], ["B", m.bPhone, m.bName, m.bToken]].map(([side, ph, nm, tk]) => (
-                      <button key={side} className="mono" style={{ fontSize: 11, color: "var(--amethyst-hi)", textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                        onClick={async () => {
-                          const body = m.a_accept && m.b_accept ? matchedMsg(nm, tk) : cardMsg(nm, tk);
-                          if (!window.confirm(`${side}측 ${nm}(${ph})에게 서버에서 문자를 보낼까요?`)) return;
-                          try {
-                            const r = await fetch("/api/admin/send", { method: "POST", headers: { "content-type": "application/json", "x-admin-key": key }, body: JSON.stringify({ to: ph, text: body }) });
-                            const j = await r.json();
-                            window.alert(r.ok ? `${side} 발송 완료 — 실장부 확인` : "실패: " + (j.error || r.status));
-                          } catch (e) { window.alert("실패: " + e.message); }
-                        }}>{side} 서버발송📨</button>
+                    {(sms.list || []).length === 0 && <p style={{ color: C.dim }}>발송 기록이 없습니다.</p>}
+                    {(sms.list || []).map((m, i) => (
+                      <div key={i} style={{ display: "flex", gap: 10, fontSize: 12.5, padding: "10px 0", borderBottom: `1px solid ${C.border}`, alignItems: "baseline" }}>
+                        <span style={{ color: C.dim, flexShrink: 0, fontVariantNumeric: "tabular-nums", minWidth: 90 }}>{m.at}</span>
+                        <span style={{ flexShrink: 0, fontWeight: 600, minWidth: 110 }}>{m.to}</span>
+                        <span style={{ color: m.fail ? C.red : C.green, flexShrink: 0, fontWeight: 700, minWidth: 36 }}>{m.status}</span>
+                        <span style={{ color: C.dim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.text}</span>
+                      </div>
                     ))}
-                    {m.kakao_a && <span className="mono" style={{ fontSize: 11, color: "var(--gold)" }}>A카톡:{m.kakao_a}</span>}
-                    {m.kakao_b && <span className="mono" style={{ fontSize: 11, color: "var(--gold)" }}>B카톡:{m.kakao_b}</span>}
-                  </div>
-                </div>
-              ))}
-            </>
-          )}
+                  </>
+                )}
+              </>
+            )}
 
-          {/* ── 매칭용 선택 플로팅 바 (어느 탭에서든 2명 채우면 바로 발사) ── */}
-          {sel.length > 0 && (
-            <div style={{
-              position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 50,
-              background: "rgba(12,10,34,.96)", borderTop: "1px solid rgba(196,176,255,.35)",
-              padding: "10px 14px", display: "flex", gap: 8, alignItems: "center", justifyContent: "center", flexWrap: "wrap",
-            }}>
-              <span className="mono" style={{ fontSize: 12, color: "var(--tx)" }}>
-                선택 {sel.length}/2 — {selNames.join(" ↔ ") || ""}
-              </span>
-              <button className="btn btn-ghost" style={{ width: "auto", padding: "8px 14px", fontSize: 12.5 }} disabled={sel.length !== 2} onClick={() => matchAction("preview")}>궁합 확인</button>
-              <button className="btn btn-seal" style={{ width: "auto", padding: "8px 14px", fontSize: 12.5 }} disabled={sel.length !== 2} onClick={() => matchAction("create")}>인연 카드 발송</button>
-              <button className="btn btn-ghost" style={{ width: "auto", padding: "8px 10px", fontSize: 12.5 }} onClick={() => setSel([])}>✕</button>
-            </div>
-          )}
-        </>
-      )}
-    </main>
+            {/* ── 매칭용 플로팅 바 ── */}
+            {sel.length > 0 && (
+              <div style={{
+                position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 50,
+                background: C.text, borderTop: `1px solid ${C.border}`,
+                padding: "12px 16px", display: "flex", gap: 10, alignItems: "center", justifyContent: "center", flexWrap: "wrap",
+              }}>
+                <span style={{ fontSize: 13, color: "#fff" }}>선택 {sel.length}/2 — {selNames.join(" ↔ ") || ""}</span>
+                <button style={{ ...btn(), background: "#374151", color: "#fff", border: "none" }} disabled={sel.length !== 2} onClick={() => matchAction("preview")}>궁합 확인</button>
+                <button style={btn("primary")} disabled={sel.length !== 2} onClick={() => matchAction("create")}>인연 카드 발송</button>
+                <button style={{ ...btn(), background: "#374151", color: "#fff", border: "none" }} onClick={() => setSel([])}>✕</button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 }

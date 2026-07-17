@@ -140,7 +140,7 @@ export default function Proto() {
         <p className="mono" style={{ fontSize: 11, color: DIM, marginBottom: 6 }}>問 六 — 마지막 질문이에요</p>
         <H size={18}>감정서 받을 연락처를 남겨주세요</H>
         <Card><span className="mono" style={{ fontSize: 15, color: "var(--tx)" }}>010-2822-4997</span></Card>
-        <Sub>🔒 감정서 링크를 문자로 보내는 데만 써요.<br />광고·스팸은 절대 없고, 어디에도 넘기지 않아요.</Sub>
+        <Sub>🔒 입력하신 번호로 감정서 링크가 발송돼요.<br />동의는 버튼 고지 · 혜택 옵트인은 접수 화면에서</Sub>
         <Btn onClick={() => go("diag")}>명반 분석 시작하기 ›</Btn>
       </>
     ),

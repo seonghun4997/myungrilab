@@ -48,7 +48,7 @@ const Ask = ({ children }) => (
 export default function Hongseon() {
   const [step, setStep] = useState("land");
   const [myMatch, setMyMatch] = useState(null);
-  const [f, setF] = useState({ gender: null, cal: "solar", leap: false, digits: "", slot: null, timeUnknown: false, name: "", phone: "", consent: false });
+  const [f, setF] = useState({ gender: null, cal: "solar", leap: false, digits: "", slot: null, timeUnknown: false, name: "", phone: "", consent: false, mkt: false });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [ming, setMing] = useState(null);
@@ -81,7 +81,6 @@ export default function Hongseon() {
     const phone = f.phone.replace(/[^0-9]/g, "");
     if (f.name.trim().length < 2) { setErr("이름을 확인해주세요."); return; }
     if (phone.length < 10) { setErr("전화번호를 확인해주세요."); return; }
-    if (!f.consent) { setErr("개인정보 동의에 체크해주세요."); return; }
     setBusy(true); setErr("");
     try {
       let sy = +digits.slice(0, 4), sm = +digits.slice(4, 6), sd = +digits.slice(6, 8);
@@ -235,12 +234,11 @@ export default function Hongseon() {
           <input className="field" type="tel" inputMode="numeric" autoComplete="off"
             placeholder="010-0000-0000" value={f.phone} style={{ marginTop: 14 }}
             onChange={(e) => setF({ ...f, phone: e.target.value })} />
-          <label className="chk" style={{ marginTop: 14 }}>
-            <input type="checkbox" checked={f.consent} onChange={(e) => setF({ ...f, consent: e.target.checked })} />{" "}
-            궁합 계산과 카드 알림 문자에만 써요. 광고·스팸 없음, 실명·번호는 상대에게 비공개.
-          </label>
           {err && <p className="input-hint" style={{ color: RED }}>{err}</p>}
           <button className="next" disabled={busy} onClick={submit}>{busy ? "명반을 펴는 중…" : "가입하고 명반 펴기 ›"}</button>
+          <p style={{ fontSize: 10.5, color: "var(--tx-dim)", textAlign: "center", marginTop: 10, lineHeight: 1.6 }}>
+            가입을 누르면 만 19세 이상이며 <a href="/privacy" target="_blank" style={{ color: "inherit" }}>개인정보 수집·이용</a>(궁합 산출·카드 알림)에 동의한 것으로 봐요.<br />실명·번호는 상대에게 공개되지 않아요.
+          </p>
         </Ask>
       )}
 
@@ -262,6 +260,14 @@ export default function Hongseon() {
           <p style={{ fontSize: 13, color: "var(--tx-dim)", margin: "0 0 20px", lineHeight: 1.7 }}>
             이제 프로필만 만들면 —<br /><b style={{ color: RED }}>오늘 밤, 첫 인연 카드</b>가 갑니다.
           </p>
+          {!f.mkt ? (
+            <button onClick={() => { setF({ ...f, mkt: true }); ev("mkt_optin", { at: "signup" }); fetch("/api/lead", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: doneToken, mkt: true }) }).catch(() => {}); }}
+              style={{ display: "block", width: "100%", marginBottom: 10, padding: "12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, background: "rgba(255,212,121,.08)", border: "1px solid rgba(255,212,121,.45)", color: "var(--gold)" }}>
+              🎁 (선택) 혜택·이벤트 소식 받아두기
+            </button>
+          ) : (
+            <p style={{ fontSize: 11.5, color: "var(--tx-dim)", marginBottom: 10 }}>혜택 소식 받기 완료 — 문자 회신 "수신거부"로 철회돼요</p>
+          )}
           <Btn red onClick={() => (window.location.href = `/m/${doneToken}`)}>프로필 만들러 가기 (1분) ›</Btn>
         </div>
       )}

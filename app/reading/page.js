@@ -48,7 +48,7 @@ export default function Home() {
   const [form, setForm] = useState({
     gender: null, cal: "solar", leap: false,
     y: null, m: null, d: null, slot: null, timeUnknown: false,
-    phone: "", name: "", concern: "", loveStatus: "", consent: false,
+    phone: "", name: "", concern: "", loveStatus: "", consent: false, marketing: false,
   });
   const [ziwei, setZiwei] = useState(null);
   const [leadId, setLeadId] = useState(null);
@@ -676,7 +676,7 @@ function PhoneInput({ form, setForm, onDone }) {
         }}
         onKeyDown={(e) => e.key === "Enter" && commit()} autoFocus />
       <p className="input-hint" style={{ color: "var(--tx-dim)" }}>
-        🔒 완성된 감정서 링크를 문자로 보내드리는 데만 씁니다 · 광고·스팸 없음
+        🔒 입력하신 번호로 감정서 링크가 발송돼요
       </p>
       <button className="go-cta" disabled={!valid} onClick={commit}>명반 분석 시작하기 ›</button>
     </div>
@@ -684,16 +684,15 @@ function PhoneInput({ form, setForm, onDone }) {
 }
 
 function NameInput({ form, setForm, onDone }) {
-  const valid = form.name.trim().length >= 1 && form.consent;
+  const valid = form.name.trim().length >= 1; // 동의는 버튼 고지 방식(계약 이행 목적 수집)
   return (
     <div>
       <input className="field" placeholder="이름" value={form.name}
         onChange={(e) => setForm({ ...form, name: e.target.value.slice(0, 12) })} autoFocus />
-      <label className="chk">
-        <input type="checkbox" checked={form.consent} onChange={(e) => setForm({ ...form, consent: e.target.checked })} />
-        <span>만 19세 이상이며, <a href="/privacy" target="_blank">개인정보 수집·이용</a>에 동의합니다 (감정 산출·전달 목적)</span>
-      </label>
-      <button className="next" disabled={!valid} onClick={() => { ev("name_set"); onDone(); }}>다 음</button>
+      <button className="next" disabled={!valid} onClick={() => { setForm((f) => ({ ...f, consent: true })); ev("name_set"); onDone(); }}>다 음</button>
+      <p style={{ fontSize: 10.5, color: "var(--tx-dim)", textAlign: "center", marginTop: 10, lineHeight: 1.6 }}>
+        다음을 누르면 만 19세 이상이며 <a href="/privacy" target="_blank" style={{ color: "inherit" }}>개인정보 수집·이용</a>(감정 산출·전달)에 동의한 것으로 봐요.
+      </p>
     </div>
   );
 }
@@ -901,6 +900,7 @@ function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth
   const [claimErr, setClaimErr] = useState("");
   const [paidClicked, setPaidClicked] = useState(false);
   const [depositDone, setDepositDone] = useState(false);
+  const [mktOn, setMktOn] = useState(false);
   const [copied, setCopied] = useState("");
   const [intro, setIntro] = useState("");
   const [avatar, setAvatar] = useState(null);
@@ -1115,6 +1115,15 @@ function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth
                   <img src="/char/wait.webp" alt="" width={349} height={291} style={{ display: "block", width: 150, height: "auto", margin: "0 auto 6px", WebkitMaskImage: "linear-gradient(to bottom, black 58%, transparent 99%)", maskImage: "linear-gradient(to bottom, black 58%, transparent 99%)" }} />
                   접수됐어요. 확인되는 대로 감정서 링크를 문자로 보내드릴게요.<br /><span style={{ color: "var(--tx-dim)", fontSize: 12 }}>확인은 매일 오전 9시~밤 12시, 보통 1시간 안이에요. 심야 입금은 다음 날 오전 9시부터 순서대로 확인해요.</span>
                 </p>
+                {leadToken && !mktOn && (
+                  <button onClick={() => { setMktOn(true); ev("mkt_optin", { at: "done" }); fetch("/api/lead", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: leadToken, mkt: true }) }).catch(() => {}); }}
+                    style={{ display: "block", width: "100%", marginTop: 12, padding: "12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, background: "rgba(255,212,121,.08)", border: "1px solid rgba(255,212,121,.45)", color: "var(--gold)" }}>
+                    🎁 (선택) 재감정 쿠폰·혜택 소식 받아두기
+                  </button>
+                )}
+                {mktOn && (
+                  <p style={{ fontSize: 11.5, color: "var(--tx-dim)", textAlign: "center", marginTop: 12 }}>혜택 소식 받기 완료 — 언제든 문자 회신 "수신거부"로 철회돼요</p>
+                )}
                 {orderCode && (
                   <div style={{ border: "1px dashed rgba(255,212,121,.6)", borderRadius: 14, padding: "13px 15px", margin: "12px 0 0", textAlign: "center", background: "rgba(255,212,121,.05)" }}>
                     <p className="mono" style={{ fontSize: 10.5, color: "var(--tx-dim)", letterSpacing: ".14em", marginBottom: 5 }}>내 주문코드 — 이 화면을 캡처해두세요</p>

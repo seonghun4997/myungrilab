@@ -1,6 +1,7 @@
 // ============================================================
 // /api/admin/leads — 리드 목록 조회 / 결제 표시 토글 (ADMIN_KEY 필요)
 // ============================================================
+import { NextResponse } from "next/server";
 import { sb } from "../../../../lib/supabase";
 
 function authorized(req) {
@@ -18,7 +19,15 @@ export async function GET(req) {
     .order("created_at", { ascending: false })
     .limit(200);
   if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ leads: data });
+  const res = NextResponse.json({ leads: data });
+  res.cookies.set("hs_admin", "1", {
+    httpOnly: true,
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
+    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production",
+  });
+  return res;
 }
 
 export async function PATCH(req) {

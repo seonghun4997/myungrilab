@@ -33,6 +33,7 @@ export async function POST(req) {
 export async function PATCH(req) {
   try {
     const { id, token, quizHits, intro, matchOptin, profile, name, phone, birth, salNames, salCount, payClaim, readPos, mkt } = await req.json();
+    const client = sb();
     if (!client) return Response.json({ ok: false });
     // token 모드: 감정서 링크 소지자(고객)가 이어읽기 위치만 갱신 (다른 필드 변경 불가)
     if (!id && token && (readPos !== undefined || mkt !== undefined)) {
@@ -42,7 +43,6 @@ export async function PATCH(req) {
       await client.from("leads").update(upd0).eq("token", String(token));
       return Response.json({ ok: true });
     }
-    const client = sb();
     if (!id) return Response.json({ ok: false });
     const upd = {};
     if (name !== undefined) upd.name = String(name).slice(0, 30);

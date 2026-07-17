@@ -26,7 +26,7 @@ export async function GET(req) {
 
   // 인연함 온보딩(프로필 3단계)을 마친 사람만 — 아바타가 완주 신호
   const ready = (pool || []).filter(
-    (l) => l.profile?.avatar && l.birth?.y && (l.gender === "M" || l.gender === "F") && l.phone
+    (l) => l.profile?.avatar && l.birth?.y && (l.birth?.gender === "M" || l.birth?.gender === "F") && l.phone
   );
 
   const origin = new URL(req.url).origin;

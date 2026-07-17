@@ -107,7 +107,7 @@ export default function Hongseon() {
       const r = await fetch("/api/lead", {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          name: f.name.trim(), phone,
+          name: f.name.trim(), phone, mkt: !!f.mkt,
           birth: {
             y: sy, m: sm, d: sd, slotIdx,
             slot: f.timeUnknown ? "미상(오시 추정)" : TIME_SLOTS[f.slot].label,
@@ -157,7 +157,7 @@ export default function Hongseon() {
             <div style={{ fontSize: 13, color: "var(--tx-dim)", lineHeight: 2, marginTop: 6 }}>
               ① 3분 가입 — 태어난 순간으로 <b style={{ color: "var(--tx)" }}>명반</b>을 폅니다<br />
               ② 매일 밤, 궁합이 가장 맞는 <b style={{ color: "var(--tx)" }}>한 분의 카드</b>를 받고<br />
-              ③ 서로 [잇기]를 누르면 — <b style={{ color: RED }}>연락처가 교환</b>돼요
+              ③ 서로 [잇기]를 누르면 — 그 순간 <b style={{ color: RED }}>서로의 번호가 열려요</b>
             </div>
           </div>
           <p style={{ textAlign: "center", fontSize: 12, color: "var(--tx-dim)", marginBottom: 18 }}>
@@ -234,6 +234,10 @@ export default function Hongseon() {
           <input className="field" type="tel" inputMode="numeric" autoComplete="off"
             placeholder="010-0000-0000" value={f.phone} style={{ marginTop: 14 }}
             onChange={(e) => setF({ ...f, phone: e.target.value })} />
+          <label className="chk" style={{ marginTop: 10 }}>
+            <input type="checkbox" checked={f.mkt} onChange={(e) => setF({ ...f, mkt: e.target.checked })} />{" "}
+            🎁 [선택] 혜택·이벤트 소식도 문자로 받을게요
+          </label>
           {err && <p className="input-hint" style={{ color: RED }}>{err}</p>}
           <button className="next" disabled={busy} onClick={submit}>{busy ? "명반을 펴는 중…" : "가입하고 명반 펴기 ›"}</button>
           <p style={{ fontSize: 10.5, color: "var(--tx-dim)", textAlign: "center", marginTop: 10, lineHeight: 1.6 }}>
@@ -260,14 +264,6 @@ export default function Hongseon() {
           <p style={{ fontSize: 13, color: "var(--tx-dim)", margin: "0 0 20px", lineHeight: 1.7 }}>
             이제 프로필만 만들면 —<br /><b style={{ color: RED }}>오늘 밤, 첫 인연 카드</b>가 갑니다.
           </p>
-          {!f.mkt ? (
-            <button onClick={() => { setF({ ...f, mkt: true }); ev("mkt_optin", { at: "signup" }); fetch("/api/lead", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: doneToken, mkt: true }) }).catch(() => {}); }}
-              style={{ display: "block", width: "100%", marginBottom: 10, padding: "12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, background: "rgba(255,212,121,.08)", border: "1px solid rgba(255,212,121,.45)", color: "var(--gold)" }}>
-              🎁 (선택) 혜택·이벤트 소식 받아두기
-            </button>
-          ) : (
-            <p style={{ fontSize: 11.5, color: "var(--tx-dim)", marginBottom: 10 }}>혜택 소식 받기 완료 — 문자 회신 "수신거부"로 철회돼요</p>
-          )}
           <Btn red onClick={() => (window.location.href = `/m/${doneToken}`)}>프로필 만들러 가기 (1분) ›</Btn>
         </div>
       )}

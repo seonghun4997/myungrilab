@@ -55,7 +55,7 @@ export async function GET(req) {
       { id: "m_created", label: "인연 카드 발송", n: mCreated, unit: "쌍" },
       { id: "m_both_yes", label: "양측 수락 (매칭 성사)", n: mBothYes, unit: "쌍" },
       { id: "m_both_paid", label: "양측 성사비 결제", n: mBothPaid, unit: "쌍" },
-      { id: "m_exchanged", label: "카카오톡 아이디 상호 공개", n: mExchanged, unit: "쌍" },
+      { id: "m_exchanged", label: "연락처 상호 공개", n: mExchanged, unit: "쌍" },
     ],
   });
 }

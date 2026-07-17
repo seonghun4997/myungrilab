@@ -266,7 +266,7 @@ export default function Proto() {
         <H size={18}>紅線 프로필 — 홍서 아씨에게<br />나를 알려주세요</H>
         <Card><b style={{ fontSize: 12.5 }}>① 아바타 · 관심사</b> <span style={{ fontSize: 12, color: DIM }}>🦊 영화 · 운동 · 맛집</span></Card>
         <Card><b style={{ fontSize: 12.5 }}>② 한 줄 소개</b> <span style={{ fontSize: 12, color: DIM }}>"주말엔 러닝, 밤엔 영화 보는 사람"</span></Card>
-        <Card><b style={{ fontSize: 12.5 }}>③ 카카오톡 아이디</b> <span className="mono" style={{ fontSize: 12, color: DIM }}>성사 전엔 비공개</span></Card>
+        <Card><b style={{ fontSize: 12.5 }}>③ 휴대폰 번호</b> <span className="mono" style={{ fontSize: 12, color: DIM }}>성사 순간 상호 공개</span></Card>
         <Btn red onClick={() => go("mbox")}>신청 완료 — 인연함 열기 ›</Btn>
       </>
     ),

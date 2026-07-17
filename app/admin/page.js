@@ -425,6 +425,22 @@ export default function Admin() {
                             }}>서버로 발송 📨</button>
                           <a className="btn btn-ghost" style={{ width: "auto", padding: "9px 14px", fontSize: 13, textDecoration: "none" }} href={smsHref(l.phone, kakaoMsg(l))}>📱 폰으로</a>
                           <a className="mono" style={{ fontSize: 12, color: "var(--amethyst-hi)" }} href={`/r/${l.token}`} target="_blank" rel="noreferrer">열람 ↗</a>
+                          <button className="mono" style={{ fontSize: 11.5, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", color: l.match_optin ? "#ffb56b" : "var(--tx-dim)" }}
+                            onClick={async () => {
+                              const off = !!l.match_optin;
+                              if (!window.confirm(off ? `${l.name}을(를) 매칭에서 제외할까요?\n(후보·카드에서 즉시 빠지고, 걸려 있던 미성사 실도 회수돼요. 성사된 기록은 보존)` : `${l.name}을(를) 매칭 풀에 복귀시킬까요?`)) return;
+                              const r = await fetch("/api/admin/leads", { method: "PATCH", headers: { "content-type": "application/json", "x-admin-key": key }, body: JSON.stringify({ action: off ? "matchOff" : "matchOn", id: l.id }) });
+                              if (!r.ok) { const j = await r.json(); window.alert("실패: " + (j.error || r.status)); return; }
+                              load();
+                            }}>{l.match_optin ? "🚫 매칭 제외" : "↩ 매칭 복귀"}</button>
+                          <button className="mono" style={{ fontSize: 11.5, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", color: "#ff8ba3" }}
+                            onClick={async () => {
+                              if (!window.confirm(`⚠️ ${l.name}(${l.phone}) 회원을 완전 삭제할까요?\n감정서·매칭 기록까지 전부 사라지고 복구할 수 없어요.`)) return;
+                              if (!window.confirm(`정말로요? [확인]을 누르면 즉시 삭제됩니다 — ${l.name}`)) return;
+                              const r = await fetch("/api/admin/leads", { method: "PATCH", headers: { "content-type": "application/json", "x-admin-key": key }, body: JSON.stringify({ action: "delete", id: l.id }) });
+                              if (!r.ok) { const j = await r.json(); window.alert("실패: " + (j.error || r.status)); return; }
+                              load();
+                            }}>🗑 삭제</button>
                         </>
                       )}
                     </div>

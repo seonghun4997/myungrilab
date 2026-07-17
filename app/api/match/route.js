@@ -111,6 +111,16 @@ export async function GET(req) {
   if (!me) return Response.json({ error: "인연함을 찾을 수 없습니다." }, { status: 404 });
   if (!isAdult(me.birth)) return Response.json({ name: me.name, notAdult: true, cards: [], hasProfile: false, hasReport: !!me.report, monthMatched: 0 });
 
+  // v26: 유령회원 배제 — 방문할 때마다 lastSeen 갱신 (하루 1회 쓰기)
+  try {
+    const _ts = todayKST();
+    if (me.profile?.lastSeen !== _ts) {
+      const _pf = { ...(me.profile || {}), lastSeen: _ts };
+      await client.from("leads").update({ profile: _pf }).eq("id", me.id);
+      me.profile = _pf;
+    }
+  } catch (e) {}
+
   const { data: rows, error } = await client
     .from("matches")
     .select("*")
@@ -136,7 +146,7 @@ export async function GET(req) {
       try { await client.from("matches").update({ seen_at: new Date().toISOString() }).eq("id", m.id); m.seen_at = 1; } catch (e) {}
     }
     const otherId = iAmA ? m.lead_b : m.lead_a;
-    const { data: other } = await client.from("leads").select("id, birth, profile, intro").eq("id", otherId).single();
+    const { data: other } = await client.from("leads").select("id, birth, profile, intro, phone").eq("id", otherId).single();
     const myAccept = iAmA ? m.a_accept : m.b_accept;
     const otherAccept = iAmA ? m.b_accept : m.a_accept;
     const myPaid = iAmA ? m.a_paid : m.b_paid;
@@ -155,9 +165,9 @@ export async function GET(req) {
       reasons: g?.reasons || null,
       otherSeen: iAmA ? !!m.seen_at : true,
       myPaid, otherPaid,
-      myKakaoSet: !!(iAmA ? m.kakao_a : m.kakao_b),
       freeBeta: !!MATCH_CONFIG.FREE_BETA,
-      otherKakao: matched && (MATCH_CONFIG.FREE_BETA || (myPaid && otherPaid)) ? (iAmA ? m.kakao_b : m.kakao_a) : null,
+      // v26: 상호 수락 순간 — 양쪽 모두에게 상대 번호 즉시 공개 (카톡 단계 폐지)
+      otherPhone: matched && (MATCH_CONFIG.FREE_BETA || (myPaid && otherPaid)) ? (other?.phone || null) : null,
     });
   }
 
@@ -176,7 +186,10 @@ export async function GET(req) {
   // ── 자동 추천: 명반 궁합이 가장 좋은 후보 1명 (하루 1장) ──
   let candidate = null;
   let poolCount = 0;
-  const dailyDone = me.profile?.lastCard === todayKST();
+  // v26: 하루 2장 — cardDate/cardN으로 소진 집계
+  const _today = todayKST();
+  const cardN = me.profile?.cardDate === _today ? (me.profile?.cardN || 0) : 0;
+  const dailyDone = cardN >= 2;
   const myG = me.birth?.gender;
   if (me.profile?.avatar && me.birth?.y && !dailyDone && (myG === "M" || myG === "F")) {
     const wantG = myG === "M" ? "F" : "M";
@@ -202,6 +215,9 @@ export async function GET(req) {
         if (cnd.birth?.gender !== wantG) continue; // 이성만 — 성별 미기재도 제외
         if (!isAdult(cnd.birth)) continue;
         if (blockedIds.has(cnd.id)) continue;
+        // v26: 2일 이상 미접속(유령) 제외 — 재방문하면 자동 복귀
+        const seen = cnd.profile?.lastSeen;
+        if (!seen || (new Date(todayKST()) - new Date(seen)) / 86400000 > 2) continue;
         poolCount++;
         // 선호 설정 (명시) — 나이 범위·지역
         const cAge = cnd.birth?.y ? new Date().getFullYear() - cnd.birth.y + 1 : null;
@@ -274,7 +290,11 @@ export async function POST(req) {
     if (action === "skip") {
       const prof = { ...(me.profile || {}) };
       prof.skips = [...new Set([...(prof.skips || []), cid])].slice(-100);
-      prof.lastCard = todayKST(); // 하루 1장 — 넘겨도 오늘 카드는 소진
+      // v26: 하루 2장 집계 — 넘겨도 한 장 소진
+      const _t = todayKST();
+      prof.cardN = prof.cardDate === _t ? (prof.cardN || 0) + 1 : 1;
+      prof.cardDate = _t;
+      prof.lastCard = _t;
       // UX2.0: 넘김 이유 학습 — age(나이대)·dist(거리)·feel(느낌)
       if (reason === "age" || reason === "dist" || reason === "feel") {
         prof.passStats = { ...(prof.passStats || {}) };
@@ -305,7 +325,10 @@ export async function POST(req) {
     if (error) return Response.json({ error: error.message }, { status: 500 });
     try {
       const prof = { ...(me.profile || {}) };
-      prof.lastCard = todayKST();
+      const _t2 = todayKST();
+      prof.cardN = prof.cardDate === _t2 ? (prof.cardN || 0) + 1 : 1;
+      prof.cardDate = _t2;
+      prof.lastCard = _t2;
       await client.from("leads").update({ profile: prof }).eq("id", me.id);
     } catch (e) {}
     // 상대에게 카드 도착 문자 (자동)
@@ -362,22 +385,6 @@ export async function POST(req) {
       return Response.json({ error: "차단 기능 준비 중이에요. 운영자에게 문의해주세요. (DB)" }, { status: 500 });
     }
     await client.from("matches").update({ status: "blocked" }).eq("id", m.id);
-    return Response.json({ ok: true });
-  }
-  if (action === "kakao") {
-    const clean = String(kakaoId || "").trim().slice(0, 40);
-    if (!clean) return Response.json({ error: "아이디를 입력해주세요." }, { status: 400 });
-    const upd = iAmA ? { kakao_a: clean } : { kakao_b: clean };
-    const { error } = await client.from("matches").update(upd).eq("id", matchId);
-    if (error) return Response.json({ error: error.message }, { status: 500 });
-    // UX2.0: 이 등록으로 "서로의 카톡"이 완성되는 순간 — 양쪽에 즉시 알림 (기다림 없는 교환)
-    const otherKakaoAlready = iAmA ? m.kakao_b : m.kakao_a;
-    const isMatched = m.a_accept === true && m.b_accept === true;
-    if (isMatched && otherKakaoAlready) {
-      const origin = new URL(req.url).origin;
-      const { data: both } = await client.from("leads").select("id, name, phone, token").in("id", [m.lead_a, m.lead_b]);
-      for (const l of both || []) await smsSafe(l.phone, MSG.kakaoOpen(l.name, origin, l.token));
-    }
     return Response.json({ ok: true });
   }
   return Response.json({ error: "알 수 없는 동작" }, { status: 400 });

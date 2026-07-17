@@ -200,6 +200,7 @@ export default function Home() {
         body: JSON.stringify({
           id: leadId || undefined,
           name: form.name.trim(),
+          mkt: !!form.marketing,
           phone: form.phone.replace(/[^0-9]/g, ""),
           birth: {
             y: sy, m: sm, d: sd, slotIdx: form.slot,
@@ -676,7 +677,12 @@ function PhoneInput({ form, setForm, onDone }) {
         }}
         onKeyDown={(e) => e.key === "Enter" && commit()} autoFocus />
       <p className="input-hint" style={{ color: "var(--tx-dim)" }}>
-        🔒 입력하신 번호로 감정서 링크가 발송돼요
+        🔒 입력하신 번호로 감정서 링크가 발송돼요</p>
+      <label className="chk" style={{ marginTop: 8, justifyContent: "center" }}>
+        <input type="checkbox" checked={form.marketing} onChange={(e) => setForm({ ...form, marketing: e.target.checked })} />
+        <span>🎁 [선택] 혜택·이벤트 소식도 문자로 받을게요</span>
+      </label>
+      <p style={{ display: "none" }}>
       </p>
       <button className="go-cta" disabled={!valid} onClick={commit}>명반 분석 시작하기 ›</button>
     </div>
@@ -900,7 +906,6 @@ function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth
   const [claimErr, setClaimErr] = useState("");
   const [paidClicked, setPaidClicked] = useState(false);
   const [depositDone, setDepositDone] = useState(false);
-  const [mktOn, setMktOn] = useState(false);
   const [copied, setCopied] = useState("");
   const [intro, setIntro] = useState("");
   const [avatar, setAvatar] = useState(null);
@@ -1115,15 +1120,6 @@ function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth
                   <img src="/char/wait.webp" alt="" width={349} height={291} style={{ display: "block", width: 150, height: "auto", margin: "0 auto 6px", WebkitMaskImage: "linear-gradient(to bottom, black 58%, transparent 99%)", maskImage: "linear-gradient(to bottom, black 58%, transparent 99%)" }} />
                   접수됐어요. 확인되는 대로 감정서 링크를 문자로 보내드릴게요.<br /><span style={{ color: "var(--tx-dim)", fontSize: 12 }}>확인은 매일 오전 9시~밤 12시, 보통 1시간 안이에요. 심야 입금은 다음 날 오전 9시부터 순서대로 확인해요.</span>
                 </p>
-                {leadToken && !mktOn && (
-                  <button onClick={() => { setMktOn(true); ev("mkt_optin", { at: "done" }); fetch("/api/lead", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: leadToken, mkt: true }) }).catch(() => {}); }}
-                    style={{ display: "block", width: "100%", marginTop: 12, padding: "12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, background: "rgba(255,212,121,.08)", border: "1px solid rgba(255,212,121,.45)", color: "var(--gold)" }}>
-                    🎁 (선택) 재감정 쿠폰·혜택 소식 받아두기
-                  </button>
-                )}
-                {mktOn && (
-                  <p style={{ fontSize: 11.5, color: "var(--tx-dim)", textAlign: "center", marginTop: 12 }}>혜택 소식 받기 완료 — 언제든 문자 회신 "수신거부"로 철회돼요</p>
-                )}
                 {orderCode && (
                   <div style={{ border: "1px dashed rgba(255,212,121,.6)", borderRadius: 14, padding: "13px 15px", margin: "12px 0 0", textAlign: "center", background: "rgba(255,212,121,.05)" }}>
                     <p className="mono" style={{ fontSize: 10.5, color: "var(--tx-dim)", letterSpacing: ".14em", marginBottom: 5 }}>내 주문코드 — 이 화면을 캡처해두세요</p>

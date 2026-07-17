@@ -32,7 +32,9 @@ export async function GET(req) {
   const origin = new URL(req.url).origin;
   let sent = 0;
   for (const me of ready) {
-    if (me.profile?.lastCard === today) continue; // 오늘 이미 카드를 확인한 사람
+    if (me.profile?.cardDate === today && (me.profile?.cardN || 0) >= 2) continue; // 오늘 2장 소진
+    const seen = me.profile?.lastSeen;
+    if (!seen || (new Date(today) - new Date(seen)) / 86400000 > 2) continue; // 유령회원 — 문자로 깨우지도 않음(스팸 방지)
     if (me.profile?.lastCardSms === today) continue; // 오늘 이미 알림을 보낸 사람 (중복 방지)
     const hasCandidate = ready.some((o) => o.id !== me.id && o.gender !== me.gender);
     if (!hasCandidate) continue; // 후보가 없으면 헛문자를 보내지 않는다

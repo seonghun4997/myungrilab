@@ -6,7 +6,7 @@ import { sb } from "../../../lib/supabase";
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { name, phone, birth, salNames, salCount } = body;
+    const { name, phone, birth, salNames, salCount, mkt } = body;
     if (!name || !phone || !birth) {
       return Response.json({ error: "필수 정보가 누락되었습니다." }, { status: 400 });
     }
@@ -19,7 +19,7 @@ export async function POST(req) {
     const token = crypto.randomUUID().replace(/-/g, "").slice(0, 20);
     const { data, error } = await client
       .from("leads")
-      .insert({ name, phone: String(phone).replace(/[^0-9]/g, ""), birth, sal_names: salNames || [], sal_count: salCount ?? null, token })
+      .insert({ name, phone: String(phone).replace(/[^0-9]/g, ""), birth, sal_names: salNames || [], sal_count: salCount ?? null, token, mkt: !!mkt })
       .select("id, token")
       .single();
     if (error) throw error;

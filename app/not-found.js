@@ -15,7 +15,7 @@ export default function NotFound() {
         padding: "60px 20px",
       }}
     >
-      <div style={{ fontSize: 46, marginBottom: 14 }} aria-hidden="true">🌙</div>
+      <img src="/char/lost.webp" alt="" width={280} height={288} style={{ width: 170, height: "auto", marginBottom: 8, WebkitMaskImage: "radial-gradient(ellipse 70% 62% at 50% 42%, black 62%, transparent 100%)", maskImage: "radial-gradient(ellipse 70% 62% at 50% 42%, black 62%, transparent 100%)" }} />
       <h1 className="display" style={{ fontSize: 24, color: "var(--tx)", marginBottom: 10 }}>
         길을 잃으셨군요
       </h1>

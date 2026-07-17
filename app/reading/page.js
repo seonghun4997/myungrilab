@@ -12,7 +12,7 @@ import {
 } from "../../lib/content";
 import { track } from "@vercel/analytics";
 import ReadingShow from "./ReadingShow";
-import ElderArt from "./ElderArt";
+
 
 const FBQ_MAP = { lead_submitted: "Lead", pay_click: "InitiateCheckout", pay_view: "ViewContent", match_apply: "SubmitApplication" };
 function ev(name, data) {
@@ -527,7 +527,12 @@ function ElderFlow({ step, form, setForm, goto, onSubmit, farthest = 0 }) {
       <div style={{ position: "relative", zIndex: 2 }} key={step} className="fade-step">
         {step === "gender" ? (
           <>
-          {!isEdit && <ElderArt size={168} />}
+          {!isEdit && (
+            <div style={{ margin: "-8px -20px 0" }}>
+              <img src="/char/hero.webp" alt="홍서 아씨" width={379} height={340}
+                style={{ display: "block", width: "100%", height: "auto", WebkitMaskImage: "linear-gradient(to bottom, black 58%, transparent 99%)", maskImage: "linear-gradient(to bottom, black 58%, transparent 99%)", marginBottom: -46 }} />
+            </div>
+          )}
           <p className="say">{ELDER.intro.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</p>
           </>
         ) : (
@@ -1096,6 +1101,7 @@ function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth
               </button>
             ) : (
               <p style={{ textAlign: "center", fontSize: 13.5, color: "var(--amethyst-hi)", marginTop: 12 }}>
+                <img src="/char/wait.webp" alt="" width={349} height={291} style={{ display: "block", width: 150, height: "auto", margin: "0 auto 6px", WebkitMaskImage: "linear-gradient(to bottom, black 58%, transparent 99%)", maskImage: "linear-gradient(to bottom, black 58%, transparent 99%)" }} />
                 접수되었네. 확인되는 대로 감정서 링크를 문자로 보내줌세.<br /><span style={{ color: "var(--tx-dim)", fontSize: 12 }}>확인은 매일 오전 9시~밤 12시, 보통 1시간 안일세. 심야 입금은 다음 날 오전 9시부터 순서대로 확인하네.</span>
               </p>
             )}

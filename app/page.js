@@ -6,7 +6,7 @@
 // ============================================================
 import { useState, useEffect } from "react";
 import { CONFIG } from "../lib/content";
-import ElderArt from "./reading/ElderArt";
+
 
 const LANTERNS = [
   { id: "total", icon: "🔮", t: "전통 자미두수 감정", d: "12개 영역·10년 대운 — 인생 전체를 한 권으로", accent: "#c4b0ff", main: true },
@@ -36,16 +36,20 @@ export default function Hub() {
 
   return (
     <main className="wrap" style={{ paddingTop: 54, paddingBottom: 60, minHeight: "100vh" }}>
-      {/* 월하노인 */}
-      <div style={{ marginBottom: 10 }}><ElderArt size={172} /></div>
-
-      <div className="eyebrow" style={{ textAlign: "center" }}>紅緖堂 · {CONFIG.CLAIM}</div>
-      <h1 className="display" style={{ fontSize: 27, textAlign: "center", margin: "12px 0 8px", color: "var(--tx)", lineHeight: 1.45 }}>
-        달 아래 노인이 묻네.<br />무엇이 궁금해서 오셨는가.
-      </h1>
-      <p style={{ textAlign: "center", fontSize: 13.5, color: "var(--tx-dim)", marginBottom: 26 }}>
-        아래 등불 하나를 고르면, 명반을 펴고 거기서부터 봐드리겠네.
-      </p>
+      {/* 홍서 아씨 — 풀블리드, 밤하늘이 사이트 배경으로 녹아듦 */}
+      <div style={{ margin: "-54px -22px 0" }}>
+        <img src="/char/hero.webp" alt="홍서 아씨" width={379} height={340}
+          style={{ display: "block", width: "100%", height: "auto", WebkitMaskImage: "linear-gradient(to bottom, black 58%, transparent 99%)", maskImage: "linear-gradient(to bottom, black 58%, transparent 99%)" }} />
+      </div>
+      <div style={{ marginTop: -64, position: "relative", zIndex: 2 }}>
+        <div className="eyebrow" style={{ textAlign: "center" }}>紅緖堂 · {CONFIG.CLAIM}</div>
+        <h1 className="display" style={{ fontSize: 26, textAlign: "center", margin: "10px 0 8px", color: "var(--tx)", lineHeight: 1.45, textShadow: "0 2px 18px rgba(11,10,34,.9)" }}>
+          무엇이 궁금해서 오셨어요?
+        </h1>
+        <p style={{ textAlign: "center", fontSize: 13.5, color: "var(--tx-dim)", marginBottom: 24 }}>
+          등불 하나를 고르면, 제가 명반을 펴볼게요.
+        </p>
+      </div>
 
       {/* 재방문 귀갓길 */}
       {(my.r || my.m) && (
@@ -93,8 +97,8 @@ export default function Hub() {
         무료 진단 · 회원가입 없음 · 3분
       </p>
       <p style={{ textAlign: "center", fontSize: 11, color: "var(--tx-dim)", marginTop: 30, lineHeight: 1.8 }}>
-        {CONFIG.BRAND}({CONFIG.BRAND_HANJA}) — 어느 등을 들어도 같은 명반에서 시작하네.<br />
-        紅線 소개팅은 감정서를 받은 이에게 열리는 문일세.
+        {CONFIG.BRAND}({CONFIG.BRAND_HANJA}) — 어느 등을 들어도 같은 명반에서 시작해요.<br />
+        紅線 소개팅은 감정서를 받은 분께 열리는 문이에요.
       </p>
     </main>
   );

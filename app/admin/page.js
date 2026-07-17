@@ -54,6 +54,7 @@ export default function Admin() {
   const [preview, setPreview] = useState(null);
   const [matches, setMatches] = useState(null);
   const [funnel, setFunnel] = useState(null);
+  const [sms, setSms] = useState(null); // 문자 발송 실장부 (Solapi 미러)
 
   const loadWith = async (k) => {
     setMsg("불러오는 중...");
@@ -70,6 +71,9 @@ export default function Admin() {
     const fr = await fetch("/api/admin/funnel", { headers: { "x-admin-key": k } });
     const fd = await fr.json();
     if (fr.ok) setFunnel(fd.funnel);
+    const sr = await fetch("/api/admin/sms", { headers: { "x-admin-key": k } });
+    const sd = await sr.json();
+    setSms(sr.ok ? sd : { error: sd.error || "조회 실패" });
   };
   const load = () => loadWith(key);
 
@@ -268,6 +272,28 @@ export default function Admin() {
 
               {todo && (
                 <div className="card" style={{ marginBottom: 16, border: "1px solid rgba(255,212,121,.4)" }}>
+                  {sms && (
+                    <div style={{ border: `1px solid ${sms.senderIssue ? "rgba(255,90,122,.6)" : "rgba(196,176,255,.3)"}`, borderRadius: 14, padding: "13px 15px", marginBottom: 16, background: sms.senderIssue ? "rgba(255,90,122,.06)" : "rgba(139,108,255,.05)" }}>
+                      <p className="mono" style={{ fontSize: 10.5, letterSpacing: ".2em", color: sms.senderIssue ? "#ff8ba3" : "var(--gold)", marginBottom: 8 }}>
+                        📨 문자 발송 실장부 (Solapi) · 발신번호: {sms.sender}
+                      </p>
+                      {sms.error && <p style={{ fontSize: 12, color: "#ff8ba3" }}>{sms.error}</p>}
+                      {sms.senderIssue && (
+                        <p style={{ fontSize: 12, color: "#ff8ba3", lineHeight: 1.7, marginBottom: 8 }}>
+                          ⚠️ <b>발신번호 미등록으로 문자가 전부 막혀 있어요.</b> Solapi 콘솔 → [발신번호] 등록(휴대폰 인증) → Vercel 환경변수 SOLAPI_SENDER를 그 번호(숫자만)로 교체 → Redeploy.
+                        </p>
+                      )}
+                      {(sms.list || []).slice(0, 12).map((m, i) => (
+                        <div key={i} style={{ display: "flex", gap: 8, fontSize: 11.5, padding: "4px 0", borderTop: i ? "1px solid rgba(196,176,255,.12)" : "none", alignItems: "baseline" }}>
+                          <span className="mono" style={{ color: "var(--tx-dim)", flexShrink: 0 }}>{m.at}</span>
+                          <span className="mono" style={{ flexShrink: 0 }}>{m.to}</span>
+                          <span style={{ color: m.fail ? "#ff8ba3" : "#5DCAA5", flexShrink: 0, fontWeight: 700 }}>{m.status}</span>
+                          <span style={{ color: "var(--tx-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.text}</span>
+                        </div>
+                      ))}
+                      {sms.list && !sms.list.length && <p style={{ fontSize: 12, color: "var(--tx-dim)" }}>발송 기록이 없어요.</p>}
+                    </div>
+                  )}
                   <p className="mono" style={{ fontSize: 10.5, letterSpacing: ".2em", color: "var(--gold)", marginBottom: 10 }}>오늘 할 일 — 누르면 바로 이동</p>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <button className="btn btn-ghost" style={{ width: "auto", padding: "8px 12px", fontSize: 13, color: todo.입금주장 ? "#ffd479" : "var(--tx-dim)" }} onClick={() => jumpLeads("claim")}>💰 입금했다는 분 {todo.입금주장}</button>
@@ -388,7 +414,16 @@ export default function Admin() {
                         <>
                           <button className="btn btn-ghost" style={{ width: "auto", padding: "9px 14px", fontSize: 13 }} onClick={() => copy(reportUrl(l.token), "링크")}>링크 복사</button>
                           <button className="btn btn-ghost" style={{ width: "auto", padding: "9px 14px", fontSize: 13 }} onClick={() => copy(kakaoMsg(l), "문자 문구")}>문자 문구 복사</button>
-                          <a className="btn btn-ghost" style={{ width: "auto", padding: "9px 14px", fontSize: 13, textDecoration: "none" }} href={smsHref(l.phone, kakaoMsg(l))}>문자 보내기 ↗</a>
+                          <button className="btn btn-ghost" style={{ width: "auto", padding: "9px 14px", fontSize: 13, cursor: "pointer" }}
+                            onClick={async () => {
+                              if (!window.confirm(`${l.name} (${l.phone})에게 서버에서 바로 문자를 보낼까요?`)) return;
+                              try {
+                                const r = await fetch("/api/admin/send", { method: "POST", headers: { "content-type": "application/json", "x-admin-key": key }, body: JSON.stringify({ to: l.phone, text: kakaoMsg(l) }) });
+                                const j = await r.json();
+                                window.alert(r.ok ? "발송 완료 — 실장부에서 상태를 확인하세요" : "실패: " + (j.error || r.status));
+                              } catch (e) { window.alert("실패: " + e.message); }
+                            }}>서버로 발송 📨</button>
+                          <a className="btn btn-ghost" style={{ width: "auto", padding: "9px 14px", fontSize: 13, textDecoration: "none" }} href={smsHref(l.phone, kakaoMsg(l))}>📱 폰으로</a>
                           <a className="mono" style={{ fontSize: 12, color: "var(--amethyst-hi)" }} href={`/r/${l.token}`} target="_blank" rel="noreferrer">열람 ↗</a>
                         </>
                       )}

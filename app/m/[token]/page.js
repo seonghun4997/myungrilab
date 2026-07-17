@@ -388,7 +388,7 @@ export default function MatchBox() {
         </div>
       )}
       {onAccept && (
-        <p className="hx-dim" style={{ textAlign: "center", marginTop: 10 }}>수락해도 상대에게 바로 알려지지 않아요{MATCH_CONFIG.FREE_BETA ? " · 오픈 기념 성사비 0원" : ` · 성사 시에만 성사비 ${MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원`}</p>
+        <p className="hx-dim" style={{ textAlign: "center", marginTop: 10 }}>수락해도 상대에게 바로 알려지지 않아요{data?.myGender === "F" ? " · 여성 성사비 없음" : ` · 성사 시에만 남성 성사비 ${MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원`}</p>
       )}
     </div>
   ); };
@@ -448,11 +448,10 @@ export default function MatchBox() {
         </>
       ) : (
         <div style={{ background: "rgba(139,108,255,.08)", border: "1px solid rgba(196,176,255,.25)", borderRadius: 14, padding: "12px 14px", marginTop: 14 }}>
-          {!c.freeBeta && (
+          {!c.myFree && (
             <>
-              <div className="hx-pay"><span>성사비 (1인)</span><b>{MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원</b></div>
+              <div className="hx-pay"><span>남성 성사비</span><b>{MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원</b></div>
               <div className="hx-pay" style={{ borderTop: "1px solid rgba(196,176,255,.2)" }}><span>나의 결제</span><b style={{ color: c.myPaid ? "#5DCAA5" : "var(--tx-dim)" }}>{c.myPaid ? "확인됨" : "대기"}</b></div>
-              <div className="hx-pay" style={{ borderTop: "1px solid rgba(196,176,255,.2)" }}><span>상대의 결제</span><b style={{ color: c.otherPaid ? "#5DCAA5" : "var(--tx-dim)" }}>{c.otherPaid ? "확인됨" : "대기"}</b></div>
               {!c.myPaid && !payOpen && (
                 <button className="hx-btn" style={{ marginTop: 10 }} onClick={() => { ev("match_fee_click"); setPayOpen(true); }}>무통장입금으로 성사비 결제하기</button>
               )}
@@ -460,12 +459,12 @@ export default function MatchBox() {
                 <div style={{ marginTop: 10 }}>
                   <p style={{ fontSize: 12, color: "#ff9db1", fontWeight: 700, marginBottom: 6 }}>입금 계좌</p>
                   <p style={{ fontSize: 15, fontWeight: 700 }}>{BANK.NAME} {BANK.ACCOUNT}</p>
-                  <p className="hx-dim" style={{ marginTop: 2 }}>예금주 {BANK.HOLDER} · {MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원 · 두 분 결제 확인 시 번호가 열려요</p>
+                  <p className="hx-dim" style={{ marginTop: 2 }}>예금주 {BANK.HOLDER} · {MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원 · 입금 확인 후 상대 번호가 열려요</p>
                 </div>
               )}
             </>
           )}
-          {c.freeBeta && <p className="hx-dim" style={{ textAlign: "center" }}>연락처를 여는 중이에요 — 잠시 후 새로고침해주세요</p>}
+          {c.myFree && <p className="hx-dim" style={{ textAlign: "center" }}>상대의 성사비 확인 후 연락처가 공개돼요 — 잠시 후 새로고침해주세요</p>}
         </div>
       )}
     </div>
@@ -492,7 +491,7 @@ export default function MatchBox() {
               <div className="hx-h1">오늘의 인연 카드가 도착했어요</div>
               <p className="hx-dim" style={{ marginTop: 4 }}>어떤 인연이 {data.name} 님을 기다리고 있을까요?</p>
               <button className="hx-btn" style={{ marginTop: 16 }} onClick={() => { ev("match_card_open"); setOpened((o) => ({ ...o, [hero.id]: true })); }}>카드 열어보기</button>
-              <p className="hx-dim" style={{ marginTop: 10, fontSize: 11 }}>{MATCH_CONFIG.FREE_BETA ? "오픈 기념 — 성사되어도 성사비 0원" : `카드 열람·수락은 무료 · 성사 시에만 성사비 ${MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원`}</p>
+              <p className="hx-dim" style={{ marginTop: 10, fontSize: 11 }}>{data?.myGender === "F" ? "카드 열람·수락은 무료 · 여성 성사비 없음" : `카드 열람·수락은 무료 · 성사 시 남성 성사비 ${MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원`}</p>
             </div>
           ) : (
             <OpenCard c={hero} onAccept={() => respond(hero.id, true)} onDecline={(r) => respond(hero.id, false, r)} />
@@ -505,7 +504,7 @@ export default function MatchBox() {
               <div className="hx-h1">홍서 아씨가 인연을 찾았어요</div>
               <p className="hx-dim" style={{ marginTop: 4 }}>{data.name} 님의 명반과 궁합이 가장 좋은 분이에요</p>
               <button className="hx-btn" style={{ marginTop: 16 }} onClick={() => { ev("match_card_open"); setOpened((o) => ({ ...o, cand: true })); }}>카드 열어보기</button>
-              <p className="hx-dim" style={{ marginTop: 10, fontSize: 11 }}>{MATCH_CONFIG.FREE_BETA ? "오픈 기념 — 성사되어도 성사비 0원" : `카드 열람·수락은 무료 · 성사 시에만 성사비 ${MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원`}</p>
+              <p className="hx-dim" style={{ marginTop: 10, fontSize: 11 }}>{data?.myGender === "F" ? "카드 열람·수락은 무료 · 여성 성사비 없음" : `카드 열람·수락은 무료 · 성사 시 남성 성사비 ${MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원`}</p>
             </div>
           ) : (
             <OpenCard c={{ ...cand, id: "cand" }} onAccept={() => propose(cand.candidateId)} onDecline={(r) => skip(cand.candidateId, r)} />

@@ -153,6 +153,9 @@ export async function GET(req) {
     const otherPaid = iAmA ? m.b_paid : m.a_paid;
     const matched = m.a_accept === true && m.b_accept === true;
     const g = safeGonghap(me.birth, other?.birth);
+    // 여성은 성사비 무료 — 남성만 결제 필요
+    const myFree = me.birth?.gender === "F";
+    const otherFree = other?.birth?.gender === "F";
     cards.push({
       id: m.id,
       createdAt: m.created_at,
@@ -165,9 +168,9 @@ export async function GET(req) {
       reasons: g?.reasons || null,
       otherSeen: iAmA ? !!m.seen_at : true,
       myPaid, otherPaid,
-      freeBeta: !!MATCH_CONFIG.FREE_BETA,
-      // v26: 상호 수락 순간 — 양쪽 모두에게 상대 번호 즉시 공개 (카톡 단계 폐지)
-      otherPhone: matched && (MATCH_CONFIG.FREE_BETA || (myPaid && otherPaid)) ? (other?.phone || null) : null,
+      myFree,
+      freeBeta: myFree,
+      otherPhone: matched && (myFree || myPaid) && (otherFree || otherPaid) ? (other?.phone || null) : null,
     });
   }
 
@@ -250,6 +253,7 @@ export async function GET(req) {
     myProfile: me.profile || null,
     myIntro: me.intro || "",
     myPrefs: me.profile?.prefs || null,
+    myGender: me.birth?.gender || null,
     poolCount,
     monthMatched,
   });

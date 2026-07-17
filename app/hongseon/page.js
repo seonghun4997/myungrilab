@@ -32,14 +32,18 @@ const Say = ({ children }) => (
 );
 const Q = ({ no, children }) => (
   <>
-    <p className="mono" style={{ fontSize: 11, color: RED, letterSpacing: ".2em", margin: "0 0 6px" }}>가입 {no} / ④</p>
-    <h2 className="display" style={{ fontSize: 20, color: "var(--tx)", margin: "0 0 16px", lineHeight: 1.5 }}>{children}</h2>
+    <span className="qnum" style={{ color: RED }}>紅線 · 가입 {no} / 四</span>
+    <h2 className="q">{children}</h2>
   </>
 );
-const inputStyle = {
-  width: "100%", padding: "14px", fontSize: 16, borderRadius: 12, marginBottom: 12,
-  background: "rgba(139,108,255,.08)", border: `1px solid ${LINE}`, color: "var(--tx)", textAlign: "center",
-};
+const Ask = ({ children }) => (
+  <section className="ask" style={{ minHeight: "auto", paddingBottom: 40 }}>
+    <div className="stars" />
+    <div className="elder-moon" aria-hidden="true" />
+    <div style={{ position: "relative", zIndex: 2 }}>{children}</div>
+  </section>
+);
+
 
 export default function Hongseon() {
   const [step, setStep] = useState("land");
@@ -176,78 +180,68 @@ export default function Hongseon() {
       )}
 
       {step === "gender" && (
-        <div style={{ paddingTop: 46 }}>
+        <Ask>
           <Say>인연을 이으려면,<br />먼저 별자리부터 볼게요.</Say>
           <Q no="①">어느 쪽이세요?</Q>
-          <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ display: "flex", gap: 10, marginTop: 26 }}>
             {[["M", "남자"], ["F", "여자"]].map(([v, t]) => (
-              <Btn key={v} style={{ flex: 1 }} ghost={f.gender !== v} onClick={() => { setF({ ...f, gender: v }); goto("birth"); }}>{t}</Btn>
+              <button key={v} className="next" style={{ flex: 1, opacity: 1 }} onClick={() => { setF({ ...f, gender: v }); goto("birth"); }}>{t}</button>
             ))}
           </div>
-        </div>
+        </Ask>
       )}
 
       {step === "birth" && (
-        <div style={{ paddingTop: 46 }}>
+        <Ask>
           <Q no="②">태어난 날을 알려주세요</Q>
-          <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 }}>
-            {[["solar", "양력"], ["lunar", "음력"]].map(([v, t]) => (
-              <button key={v} onClick={() => setF({ ...f, cal: v })} className="mono" style={{
-                padding: "7px 16px", borderRadius: 14, fontSize: 12.5, cursor: "pointer",
-                border: `1px solid ${f.cal === v ? "rgba(255,212,121,.6)" : LINE}`,
-                background: f.cal === v ? "rgba(255,212,121,.1)" : "transparent",
-                color: f.cal === v ? "var(--gold)" : "var(--tx-dim)",
-              }}>{t}</button>
-            ))}
+          <div className="cal-toggle">
+            <button className={f.cal === "solar" ? "on" : ""} onClick={() => setF({ ...f, cal: "solar" })}>양력</button>
+            <button className={f.cal === "lunar" ? "on" : ""} onClick={() => setF({ ...f, cal: "lunar" })}>음력</button>
           </div>
-          <input style={inputStyle} className="mono" type="tel" inputMode="numeric" autoComplete="off"
-            placeholder="0000년 00월 00일" value={disp} autoFocus
-            onChange={(e) => {
-              const nd = e.target.value.replace(/[^0-9]/g, "").slice(0, 8);
-              if (e.target.value.length < disp.length && nd.length >= digits.length) setF({ ...f, digits: digits.slice(0, -1) });
-              else setF({ ...f, digits: nd });
-            }}
+          <input className="field" type="tel" inputMode="numeric" autoComplete="off" enterKeyHint="next"
+            placeholder="예) 19960715" value={digits} maxLength={8} autoFocus
+            style={{ letterSpacing: "0.12em" }}
+            onChange={(e) => setF({ ...f, digits: e.target.value.replace(/[^0-9]/g, "").slice(0, 8) })}
             onKeyDown={(e) => e.key === "Enter" && birthValid && goto("time")} />
-          {birthProblem && <p style={{ textAlign: "center", fontSize: 12.5, color: RED, marginBottom: 10 }}>{birthProblem}</p>}
-          {f.cal === "lunar" && (
-            <label style={{ display: "block", textAlign: "center", fontSize: 12.5, color: "var(--tx-dim)", marginBottom: 10 }}>
-              <input type="checkbox" checked={f.leap} onChange={(e) => setF({ ...f, leap: e.target.checked })} /> 윤달이에요
-            </label>
+          {digits.length > 0 && digits.length < 8 && (
+            <p className="input-hint" style={{ opacity: .8 }}>{disp}… — 8자리로 적어주세요</p>
           )}
-          <Btn disabled={!birthValid} onClick={() => goto("time")}>다 음 ›</Btn>
-        </div>
+          {birthValid && <p className="input-hint" style={{ color: "var(--tx)" }}>{disp}</p>}
+          {birthProblem && <p className="input-hint" style={{ color: RED }}>{birthProblem}</p>}
+          {f.cal === "lunar" && (
+            <label className="chk"><input type="checkbox" checked={f.leap} onChange={(e) => setF({ ...f, leap: e.target.checked })} /> 윤달이에요</label>
+          )}
+          <button className="next" disabled={!birthValid} onClick={() => goto("time")}>다 음 ›</button>
+        </Ask>
       )}
 
       {step === "time" && (
-        <div style={{ paddingTop: 46 }}>
+        <Ask>
           <Q no="③">태어난 시(時)는 언제예요?</Q>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, marginBottom: 10 }}>
+          <div className="slot-grid" style={{ marginTop: 20 }}>
             {TIME_SLOTS.map((s, i) => (
-              <button key={s.label} onClick={() => { setF({ ...f, slot: i, timeUnknown: false }); goto("contact"); }} style={{
-                padding: "10px 6px", fontSize: 11.5, borderRadius: 10, cursor: "pointer", fontFamily: "inherit",
-                border: `1px solid ${LINE}`, background: "rgba(139,108,255,.05)", color: "var(--tx)",
-              }}>{s.label}</button>
+              <button key={s.label} className="slot-btn" onClick={() => { setF({ ...f, slot: i, timeUnknown: false }); goto("contact"); }}>{s.label}</button>
             ))}
           </div>
-          <Btn ghost onClick={() => { setF({ ...f, timeUnknown: true, slot: 6 }); goto("contact"); }}>몰라도 괜찮아요 — 모름으로 진행 ›</Btn>
-        </div>
+          <button className="next" style={{ opacity: 1 }} onClick={() => { setF({ ...f, timeUnknown: true, slot: 6 }); goto("contact"); }}>몰라도 괜찮아요 — 모름으로 진행 ›</button>
+        </Ask>
       )}
 
       {step === "contact" && (
-        <div style={{ paddingTop: 46 }}>
+        <Ask>
           <Q no="④">마지막이에요 — 카드 받을 연락처</Q>
-          <input style={inputStyle} placeholder="이름" value={f.name} autoFocus
+          <input className="field" placeholder="이름" value={f.name} autoFocus
             onChange={(e) => setF({ ...f, name: e.target.value })} />
-          <input style={inputStyle} className="mono" type="tel" inputMode="numeric" autoComplete="off"
-            placeholder="010-0000-0000" value={f.phone}
+          <input className="field" type="tel" inputMode="numeric" autoComplete="off"
+            placeholder="010-0000-0000" value={f.phone} style={{ marginTop: 14 }}
             onChange={(e) => setF({ ...f, phone: e.target.value })} />
-          <label style={{ display: "block", fontSize: 12, color: "var(--tx-dim)", margin: "2px 0 12px", lineHeight: 1.6 }}>
+          <label className="chk" style={{ marginTop: 14 }}>
             <input type="checkbox" checked={f.consent} onChange={(e) => setF({ ...f, consent: e.target.checked })} />{" "}
-            궁합 계산과 카드 알림 문자에만 쓰는 것에 동의해요. 광고·스팸 없음, 실명·번호는 상대에게 비공개.
+            궁합 계산과 카드 알림 문자에만 써요. 광고·스팸 없음, 실명·번호는 상대에게 비공개.
           </label>
-          {err && <p style={{ textAlign: "center", fontSize: 12.5, color: RED, marginBottom: 10 }}>{err}</p>}
-          <Btn red disabled={busy} onClick={submit}>{busy ? "명반을 펴는 중…" : "가입하고 명반 펴기 ›"}</Btn>
-        </div>
+          {err && <p className="input-hint" style={{ color: RED }}>{err}</p>}
+          <button className="next" disabled={busy} onClick={submit}>{busy ? "명반을 펴는 중…" : "가입하고 명반 펴기 ›"}</button>
+        </Ask>
       )}
 
       {step === "done" && (

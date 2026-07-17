@@ -40,8 +40,8 @@ function ScoreRing({ emoji, score }) {
   return (
     <span style={{ position: "relative", display: "inline-block", width: 96, height: 96 }}>
       <svg viewBox="0 0 96 96" width="96" height="96" aria-hidden="true">
-        <circle cx="48" cy="48" r={r} fill="none" stroke="#efedf8" strokeWidth="6" />
-        <circle cx="48" cy="48" r={r} fill="none" stroke="#6c4dff" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${on} ${c}`} transform="rotate(-90 48 48)" />
+        <circle cx="48" cy="48" r={r} fill="none" stroke="rgba(196,176,255,.18)" strokeWidth="6" />
+        <circle cx="48" cy="48" r={r} fill="none" stroke="#ff8ba3" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${on} ${c}`} transform="rotate(-90 48 48)" />
         <circle cx="48" cy="48" r="33" fill={bg} />
       </svg>
       <span style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }}>
@@ -159,44 +159,52 @@ export default function MatchBox() {
   const cand = !hero && data?.candidate ? data.candidate : null;
 
   const css = `
-    .hx{min-height:100vh;background:#f6f6fb;color:#1c1633;font-family:-apple-system,BlinkMacSystemFont,"Pretendard","Apple SD Gothic Neo","Noto Sans KR",sans-serif;letter-spacing:-.01em}
+    .hx{min-height:100vh;background:radial-gradient(1200px 600px at 50% -100px, #1a1145 0%, #0B0A22 55%, #080618 100%);color:var(--tx,#EFEAFF);font-family:inherit;letter-spacing:0;position:relative}
+    .hx::before{content:"";position:fixed;inset:0;pointer-events:none;background:
+      radial-gradient(1.6px 1.6px at 12% 18%, rgba(220,210,255,.8) 50%, transparent 51%),
+      radial-gradient(1.4px 1.4px at 78% 9%, rgba(220,210,255,.65) 50%, transparent 51%),
+      radial-gradient(1.2px 1.2px at 88% 34%, rgba(220,210,255,.5) 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 30% 44%, rgba(220,210,255,.5) 50%, transparent 51%),
+      radial-gradient(1.2px 1.2px at 62% 66%, rgba(220,210,255,.4) 50%, transparent 51%)}
     .hx *{box-sizing:border-box;margin:0}
-    .hx-in{max-width:440px;margin:0 auto;padding:18px 18px 46px}
-    .hx-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-    .hx-logo{display:flex;align-items:center;gap:7px;font-weight:700;font-size:16px}
-    .hx-logo .moon{width:26px;height:26px;border-radius:9px;background:#171233;color:#ffd479;display:inline-flex;align-items:center;justify-content:center;font-size:13px}
-    .hx-chip{font-size:12px;color:#6c4dff;background:#eee9ff;border-radius:999px;padding:6px 12px;text-decoration:none;font-weight:600}
-    .hx-card{background:#fff;border-radius:22px;padding:20px 16px;box-shadow:0 1px 2px rgba(28,22,51,.04),0 8px 28px rgba(28,22,51,.06)}
-    .hx-timer{display:inline-flex;align-items:center;gap:6px;background:#1c1633;color:#fff;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600}
-    .hx-h1{font-size:17px;font-weight:700;line-height:1.45}
-    .hx-dim{font-size:12.5px;color:#9a95b8;line-height:1.6}
-    .hx-btn{display:block;width:100%;border:none;cursor:pointer;background:#6c4dff;color:#fff;border-radius:999px;padding:14px;font-size:14.5px;font-weight:700;text-align:center;text-decoration:none;font-family:inherit}
-    .hx-btn:disabled{opacity:.55;cursor:default}
-    .hx-btn.pink{background:#ff5c7a}
-    .hx-btn.ghost{background:#fff;color:#9a95b8;border:1px solid #e7e6f2;font-weight:600}
-    .hx-tag{background:#f3f1fb;border-radius:999px;padding:5px 12px;font-size:12px;color:#544d7d;font-weight:500}
-    .hx-tag.on{background:#6c4dff;color:#fff}
-    .hx-note{background:#171233;border-radius:16px;padding:14px 15px;color:#d9d2f5;margin-top:12px}
-    .hx-note b{color:#b7a8ff;font-weight:600}
-    .hx-note .t{font-size:11.5px;color:#ffd479;letter-spacing:.08em;margin-bottom:6px;font-weight:600}
+    .hx-in{max-width:560px;margin:0 auto;padding:18px 22px 56px;position:relative;z-index:1}
+    .hx-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+    .hx-logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;font-family:var(--disp,inherit);letter-spacing:.14em;color:var(--tx)}
+    .hx-logo .moon{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 35%, #ffe9ad, #f4c465);color:#0B0A22;display:inline-flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 0 18px rgba(255,212,121,.45)}
+    .hx-chip{font-size:11.5px;color:var(--gold,#ffd479);background:rgba(255,212,121,.08);border:1px solid rgba(255,212,121,.45);border-radius:999px;padding:6px 12px;text-decoration:none;font-weight:600;font-family:var(--mono,inherit)}
+    .hx-card{background:rgba(139,108,255,.07);border:1px solid rgba(196,176,255,.3);border-radius:20px;padding:20px 16px;backdrop-filter:blur(2px)}
+    .hx-timer{display:inline-flex;align-items:center;gap:6px;background:rgba(255,90,122,.14);border:1px solid rgba(255,90,122,.5);color:#ff9db1;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600}
+    .hx-h1{font-size:18px;font-weight:700;line-height:1.5;font-family:var(--disp,inherit);color:var(--tx)}
+    .hx-dim{font-size:12.5px;color:var(--tx-dim,#9A93C4);line-height:1.65}
+    .hx-btn{display:block;width:100%;border:1px solid rgba(196,176,255,.55);cursor:pointer;background:rgba(139,108,255,.16);color:var(--tx);border-radius:14px;padding:14px;font-size:14.5px;font-weight:700;text-align:center;text-decoration:none;font-family:inherit}
+    .hx-btn:hover:not(:disabled){border-color:var(--amethyst-hi,#c4b0ff)}
+    .hx-btn:disabled{opacity:.4;cursor:default}
+    .hx-btn.pink{background:rgba(255,90,122,.14);border-color:rgba(255,90,122,.6);color:#ff8ba3}
+    .hx-btn.ghost{background:transparent;color:var(--tx-dim);border:1px solid rgba(196,176,255,.3);font-weight:600}
+    .hx-tag{background:rgba(139,108,255,.1);border:1px solid rgba(196,176,255,.28);border-radius:999px;padding:5px 12px;font-size:12px;color:var(--tx-dim);font-weight:500;cursor:pointer}
+    .hx-tag.on{background:rgba(255,90,122,.16);border-color:rgba(255,90,122,.65);color:#ff9db1}
+    .hx-note{background:rgba(11,10,34,.75);border:1px solid rgba(196,176,255,.25);border-radius:16px;padding:14px 15px;color:#d9d2f5;margin-top:12px}
+    .hx-note b{color:#c4b0ff;font-weight:600}
+    .hx-note .t{font-size:11.5px;color:var(--gold,#ffd479);letter-spacing:.1em;margin-bottom:6px;font-weight:600;font-family:var(--mono,inherit)}
     .hx-note p{font-size:13px;line-height:1.8}
-    .hx-badge{display:inline-block;background:#1c1633;color:#ffd479;border-radius:999px;padding:5px 13px;font-size:12.5px;font-weight:700}
-    .hx-banner{display:flex;align-items:center;justify-content:center;gap:6px;background:#ece8ff;border-radius:16px;padding:12px;font-size:13px;color:#3c2f8f;font-weight:600;margin-top:12px}
+    .hx-badge{display:inline-block;background:rgba(255,212,121,.1);border:1px solid rgba(255,212,121,.5);color:var(--gold,#ffd479);border-radius:999px;padding:5px 13px;font-size:12.5px;font-weight:700}
+    .hx-banner{display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(139,108,255,.1);border:1px solid rgba(196,176,255,.3);border-radius:14px;padding:12px;font-size:13px;color:#c4b0ff;font-weight:600;margin-top:12px}
     .hx-av{border:none;cursor:pointer;border-radius:50%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;padding:0;position:relative}
-    .hx-av.on{outline:3px solid #6c4dff;outline-offset:-1px}
-    .hx-av .ck{position:absolute;right:-2px;top:-2px;width:20px;height:20px;border-radius:50%;background:#6c4dff;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center}
-    .hx-input{width:100%;border:1px solid #e7e6f2;background:#fff;border-radius:14px;padding:12px 14px;font-size:14px;color:#1c1633;font-family:inherit;outline:none}
-    .hx-input:focus{border-color:#6c4dff}
-    .hx-label{font-size:12.5px;color:#6c4dff;font-weight:700;margin:16px 0 8px}
+    .hx-av.on{outline:3px solid #ff8ba3;outline-offset:-1px}
+    .hx-av .ck{position:absolute;right:-2px;top:-2px;width:20px;height:20px;border-radius:50%;background:#ff5c7a;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center}
+    .hx-input{width:100%;border:1px solid rgba(196,176,255,.35);background:rgba(139,108,255,.08);border-radius:12px;padding:12px 14px;font-size:14.5px;color:var(--tx);font-family:inherit;outline:none}
+    .hx-input::placeholder{color:rgba(234,230,255,.3)}
+    .hx-input:focus{border-color:var(--amethyst-hi,#c4b0ff)}
+    .hx-label{font-size:12px;color:var(--gold,#ffd479);font-weight:700;margin:16px 0 8px;letter-spacing:.06em;font-family:var(--mono,inherit)}
     .hx-step{display:flex;gap:5px;justify-content:center;margin-bottom:14px}
-    .hx-step span{width:6px;height:6px;border-radius:50%;background:#dcd9ec}
-    .hx-step span.on{background:#1c1633;width:18px;border-radius:999px}
-    .hx-tl{border-left:2px solid #e7e6f2;padding-left:14px;margin:6px 0 0 6px;display:flex;flex-direction:column;gap:14px}
+    .hx-step span{width:6px;height:6px;border-radius:50%;background:rgba(196,176,255,.25)}
+    .hx-step span.on{background:var(--gold,#ffd479);width:18px;border-radius:999px}
+    .hx-tl{border-left:2px solid rgba(196,176,255,.25);padding-left:14px;margin:6px 0 0 6px;display:flex;flex-direction:column;gap:14px}
     .hx-state{font-size:11.5px;font-weight:700;border-radius:999px;padding:4px 10px;display:inline-block}
-    .hx-quote{font-size:13px;color:#544d7d;line-height:1.75;border-top:1px solid #efedf8;padding-top:12px;margin-top:12px}
+    .hx-quote{font-size:13px;color:var(--tx-dim);line-height:1.75;border-top:1px solid rgba(196,176,255,.2);padding-top:12px;margin-top:12px}
     .hx-pay{display:flex;justify-content:space-between;font-size:13px;padding:6px 0}
-    .hx-pay span:first-child{color:#9a95b8}
-    .hx-pay b{font-weight:700}
+    .hx-pay span:first-child{color:var(--tx-dim)}
+    .hx-pay b{font-weight:700;color:var(--tx)}
   `;
 
   // ───────── 로딩/에러 ─────────
@@ -231,7 +239,7 @@ export default function MatchBox() {
       <main className="hx"><style>{css}</style>
         <div className="hx-in">
           <div className="hx-top">
-            <span className="hx-logo"><span className="moon">月</span>홍서당</span>
+            <span className="hx-logo"><span className="moon">月</span>紅緖堂 · 인연함</span>
           </div>
           <div className="hx-card">
             <div className="hx-step">{[1, 2, 3].map((n) => <span key={n} className={s === n ? "on" : ""} />)}</div>
@@ -259,7 +267,7 @@ export default function MatchBox() {
                 <input className="hx-input" placeholder="대학생, 간호사, 개발자…" value={job} onChange={(e) => setJob(e.target.value)} maxLength={20} />
                 <div className="hx-label">사는 지역</div>
                 <input className="hx-input" placeholder="서울 마포, 경기 의정부…" value={region} onChange={(e) => setRegion(e.target.value)} maxLength={20} />
-                <div className="hx-label">관심사 <span style={{ color: "#9a95b8", fontWeight: 500 }}>(최대 5개)</span></div>
+                <div className="hx-label">관심사 <span style={{ color: "var(--tx-dim)", fontWeight: 500 }}>(최대 5개)</span></div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
                   {INTERESTS.map((t) => (
                     <button key={t} className={"hx-tag" + (ints.includes(t) ? " on" : "")} style={{ border: "none", cursor: "pointer", fontFamily: "inherit" }} onClick={() => toggleInt(t)}>{t}</button>
@@ -316,9 +324,9 @@ export default function MatchBox() {
         )}
       </div>
       {c.persona && (
-        <div style={{ background: "#f3f1fb", borderRadius: 14, padding: "11px 13px", marginTop: 12 }}>
-          <p style={{ fontSize: 11.5, color: "#6c4dff", fontWeight: 700, marginBottom: 4 }}>홍서 아씨가 본 이 사람</p>
-          <p style={{ fontSize: 13, color: "#544d7d", lineHeight: 1.7 }}>{c.persona.look}이에요. {c.persona.love}이고요.</p>
+        <div style={{ background: "rgba(139,108,255,.1)", border: "1px solid rgba(196,176,255,.28)", borderRadius: 14, padding: "11px 13px", marginTop: 12 }}>
+          <p style={{ fontSize: 11.5, color: "#ff9db1", fontWeight: 700, marginBottom: 4 }}>홍서 아씨가 본 이 사람</p>
+          <p style={{ fontSize: 13, color: "var(--tx-dim)", lineHeight: 1.7 }}>{c.persona.look}이에요. {c.persona.love}이고요.</p>
         </div>
       )}
       {c.other.intro && <p className="hx-quote">“{c.other.intro}”</p>}
@@ -365,7 +373,7 @@ export default function MatchBox() {
         </div>
       )}
       {c.otherKakao ? (
-        <div style={{ background: "#f3f1fb", borderRadius: 16, padding: 16, marginTop: 14, textAlign: "center" }}>
+        <div style={{ background: "rgba(139,108,255,.1)", border: "1px solid rgba(196,176,255,.28)", borderRadius: 16, padding: 16, marginTop: 14, textAlign: "center" }}>
           <p className="hx-dim">상대의 카카오톡 아이디</p>
           <div style={{ fontSize: 20, fontWeight: 700, margin: "6px 0" }}>{c.otherKakao}</div>
           <p className="hx-dim">좋은 연 되시길 — 홍서 아씨는 여기까지예요</p>
@@ -375,8 +383,8 @@ export default function MatchBox() {
           {!c.freeBeta && (
           <div style={{ background: "#f6f6fb", borderRadius: 16, padding: "10px 15px", marginTop: 14 }}>
             <div className="hx-pay"><span>성사비 (1인)</span><b>{MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원</b></div>
-            <div className="hx-pay" style={{ borderTop: "1px solid #efedf8" }}><span>나의 결제</span><b style={{ color: c.myPaid ? "#1d9e75" : "#9a95b8" }}>{c.myPaid ? "확인됨" : "대기"}</b></div>
-            <div className="hx-pay" style={{ borderTop: "1px solid #efedf8" }}><span>상대의 결제</span><b style={{ color: c.otherPaid ? "#1d9e75" : "#9a95b8" }}>{c.otherPaid ? "확인됨" : "대기"}</b></div>
+            <div className="hx-pay" style={{ borderTop: "1px solid rgba(196,176,255,.2)" }}><span>나의 결제</span><b style={{ color: c.myPaid ? "#5DCAA5" : "var(--tx-dim)" }}>{c.myPaid ? "확인됨" : "대기"}</b></div>
+            <div className="hx-pay" style={{ borderTop: "1px solid rgba(196,176,255,.2)" }}><span>상대의 결제</span><b style={{ color: c.otherPaid ? "#5DCAA5" : "var(--tx-dim)" }}>{c.otherPaid ? "확인됨" : "대기"}</b></div>
           </div>
           )}
           {!c.freeBeta && !c.myPaid && !payOpen && (
@@ -385,8 +393,8 @@ export default function MatchBox() {
             </button>
           )}
           {!c.freeBeta && !c.myPaid && payOpen && (
-            <div style={{ background: "#f3f1fb", borderRadius: 16, padding: "13px 14px", marginTop: 12 }}>
-              <p style={{ fontSize: 12, color: "#6c4dff", fontWeight: 700, marginBottom: 8 }}>입금 계좌</p>
+            <div style={{ background: "rgba(139,108,255,.1)", border: "1px solid rgba(196,176,255,.28)", borderRadius: 16, padding: "13px 14px", marginTop: 12 }}>
+              <p style={{ fontSize: 12, color: "#ff9db1", fontWeight: 700, marginBottom: 8 }}>입금 계좌</p>
               <p style={{ fontSize: 15, fontWeight: 700 }}>{BANK.NAME} {BANK.ACCOUNT}</p>
               <p className="hx-dim" style={{ marginTop: 2 }}>예금주 {BANK.HOLDER} · {MATCH_CONFIG.PRICE.toLocaleString("ko-KR")}원</p>
               <button className="hx-btn ghost" style={{ marginTop: 10, padding: "10px", fontSize: 13 }} onClick={() => copy(`${BANK.NAME} ${BANK.ACCOUNT}`, "acc")}>
@@ -396,7 +404,7 @@ export default function MatchBox() {
                 onClick={(e) => { e.preventDefault(); try { window.location.href = tossLink(MATCH_CONFIG.PRICE); } catch (err) {} }}>토스로 3초 송금 (토스 앱 필요)</a>
               <p className="hx-dim" style={{ marginTop: 10, fontSize: 10.5, lineHeight: 1.6 }}>{LEGAL.REFUND}</p>
               <p className="hx-dim" style={{ marginTop: 10, lineHeight: 1.7 }}>
-                입금자명은 <b style={{ color: "#1c1633" }}>문답에 적으신 성함</b>으로 보내주세요.<br />
+                입금자명은 <b style={{ color: "var(--tx)" }}>문답에 적으신 성함</b>으로 보내주세요.<br />
                 확인 시간: 매일 오전 9시~밤 12시 (보통 1시간 이내) · 심야 입금은 다음 날 오전 9시부터 순차 처리돼요.<br />
                 확인되면 위 표가 '확인됨'으로 바뀌고, 문자로도 알려드려요.
               </p>
@@ -420,7 +428,7 @@ export default function MatchBox() {
     <main className="hx"><style>{css}</style>
       <div className="hx-in">
         <div className="hx-top">
-          <span className="hx-logo"><span className="moon">月</span>홍서당</span>
+          <span className="hx-logo"><span className="moon">月</span>紅緖堂 · 인연함</span>
           <span style={{ display: "flex", gap: 6 }}>
             {data.hasReport && <a className="hx-chip" href={`/r/${token}`}>내 감정서</a>}
             <button className="hx-chip" style={{ border: "none", cursor: "pointer", fontFamily: "inherit" }} onClick={() => setStep(1)}>프로필</button>
@@ -491,13 +499,13 @@ export default function MatchBox() {
                   {c.matched ? (
                     <div style={{ marginTop: 8 }}><MatchedCard c={c} /></div>
                   ) : c.myAccept === false ? (
-                    <p style={{ fontSize: 13, color: "#9a95b8", marginTop: 4 }}>이번 인연은 보냈어요</p>
+                    <p style={{ fontSize: 13, color: "var(--tx-dim)", marginTop: 4 }}>이번 인연은 보냈어요</p>
                   ) : c.myAccept === true ? (
                     <div className="hx-card" style={{ padding: "14px 15px", marginTop: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <AvatarCircle emoji={c.other.avatar} size={40} />
                         <div>
-                          <span className="hx-state" style={{ background: "#fff4d6", color: "#854f0b" }}>상대의 마음을 기다리는 중</span>
+                          <span className="hx-state" style={{ background: "rgba(255,212,121,.14)", color: "var(--gold)", border: "1px solid rgba(255,212,121,.45)" }}>상대의 마음을 기다리는 중</span>
                           <p className="hx-dim" style={{ marginTop: 5 }}>홍서 아씨가 상대의 마음을 물으러 갔어요<br />결과는 매일 밤 11시에 열리고, 문자로도 알려드려요</p>
                         </div>
                       </div>

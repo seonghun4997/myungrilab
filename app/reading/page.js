@@ -619,16 +619,18 @@ function BirthInput({ form, setForm, onDone }) {
         <button className={form.cal === "solar" ? "on" : ""} onClick={() => setForm({ ...form, cal: "solar" })}>양력</button>
         <button className={form.cal === "lunar" ? "on" : ""} onClick={() => setForm({ ...form, cal: "lunar" })}>음력</button>
       </div>
+      {/* v24.1: 입력값은 순수 숫자만 — 한글(년/월/일)을 값에 섞으면 Windows 한글 IME가 글자를 삼킨다 */}
       <input className="field" type="tel" inputMode="numeric" autoComplete="off" enterKeyHint="next"
-        placeholder="0000년 00월 00일" value={disp}
-        style={{ position: "relative", zIndex: 5 }}
-        onChange={(e) => {
-          const nd = e.target.value.replace(/[^0-9]/g, "").slice(0, 8);
-          // 지웠는데 포맷 글자(년/월/일)만 지워져 숫자가 그대로면 → 숫자를 하나 지운다
-          if (e.target.value.length < disp.length && nd.length >= digits.length) setVal(digits.slice(0, -1));
-          else setVal(nd);
-        }}
+        placeholder="예) 19960715" value={digits} maxLength={8}
+        style={{ position: "relative", zIndex: 5, letterSpacing: "0.12em" }}
+        onChange={(e) => setVal(e.target.value.replace(/[^0-9]/g, "").slice(0, 8))}
         onKeyDown={(e) => e.key === "Enter" && commit()} autoFocus />
+      {digits.length > 0 && digits.length < 8 && (
+        <p className="input-hint" style={{ opacity: .8 }}>{disp}{"…"} — 8자리로 적어주세요 (예: 19960715)</p>
+      )}
+      {digits.length === 8 && !problem && (
+        <p className="input-hint" style={{ color: "var(--tx)" }}>{disp}</p>
+      )}
       {problem && <p className="input-hint">{problem}</p>}
       {preview && <p className="input-hint" style={{ color: "var(--gold)" }}>{preview}</p>}
       {form.cal === "lunar" && (

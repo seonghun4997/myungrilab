@@ -4,9 +4,12 @@
 // ① ChunkLoadError(배포 직후 옛 캐시)면 1회 자동 새로고침으로 자가 치유
 // ② 그 외 오류는 홍서당 톤 안내 + 에러 원문 노출 (제보 정확도 ↑)
 // ============================================================
+import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 
 export default function Error({ error, reset }) {
+  useEffect(() => { Sentry.captureException(error); }, [error]);
+
   useEffect(() => {
     try {
       const msg = String(error?.message || "");

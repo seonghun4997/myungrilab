@@ -1,6 +1,9 @@
 "use client";
+import * as Sentry from "@sentry/nextjs";
+import { useEffect } from "react";
 // 최상위(레이아웃 자체) 오류용 — 최소 구성
 export default function GlobalError({ error, reset }) {
+  useEffect(() => { Sentry.captureException(error); }, [error]);
   return (
     <html lang="ko">
       <body style={{ background: "#0B0A22", color: "#EFEAFF", fontFamily: "sans-serif", textAlign: "center", paddingTop: 120 }}>

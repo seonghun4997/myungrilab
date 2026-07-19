@@ -4,6 +4,7 @@
 // 탭: 📊 대시보드 / 👤 리드 / 🧧 매칭 / 📨 SMS
 // ============================================================
 import { useState, useEffect } from "react";
+import CompanySwitcher from "../company-switcher"; // 디깅코퍼레이션 사업체 스위처
 import { CONFIG } from "../../lib/content";
 
 const todayKST = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
@@ -281,6 +282,9 @@ export default function Admin() {
 
         {authed && leads && (
           <>
+            {/* ── 사업체 스위처 (탭 바 위 우측) ── */}
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}><CompanySwitcher /></div>
+
             {/* ── 탭 바 ── */}
             <div style={{ display: "flex", borderBottom: `1px solid ${C.border}`, marginBottom: 20, gap: 0 }}>
               <TabBtn id="dash" label="📊 대시보드" />

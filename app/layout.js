@@ -13,9 +13,17 @@ export const metadata = {
   openGraph: {
     title: `${CONFIG.BRAND}(${CONFIG.BRAND_HANJA}) — ${CONFIG.TAGLINE}`,
     description: "내 인생의 대운은 언제 시작될까. 돈·일·사랑·건강, 12개 영역을 홍서 아씨가 명반으로 짚어드립니다.",
+    url: "https://myungrilab.vercel.app",
     type: "website",
     locale: "ko_KR",
     siteName: CONFIG.BRAND,
+  },
+  // 카톡·트위터 등 수집기가 큰 이미지 카드로 보여주도록 명시.
+  // 대표 이미지는 app/opengraph-image.jpg (1200×630)를 Next가 자동으로 붙여준다.
+  twitter: {
+    card: "summary_large_image",
+    title: `${CONFIG.BRAND}(${CONFIG.BRAND_HANJA}) — ${CONFIG.TAGLINE}`,
+    description: "내 인생의 대운은 언제 시작될까. 돈·일·사랑·건강, 12개 영역을 홍서 아씨가 명반으로 짚어드립니다.",
   },
 };
 

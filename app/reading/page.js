@@ -245,7 +245,7 @@ export default function Home() {
       {step === "diag" && ziwei && <Diagnosis z={ziwei} name={form.name} timeUnknown={form.timeUnknown} onPay={() => goto("pay")} />}
       {step === "pay" && ziwei && <Payment leadId={leadId} leadToken={leadToken} birthYear={ziwei.input.solarYear} onBack={() => goto("diag")}
         birthLine={`${form.y}.${form.m}.${form.d} (${form.cal === "solar" ? "양" : "음"}) · ${form.timeUnknown ? "시간 미상" : TIME_SLOTS[form.slot]?.label} · ${form.gender === "M" ? "남" : "여"}`}
-        onEditBirth={() => goto("birth")} />}
+        onEditBirth={() => goto("birth")} form={form} />}
     </main>
   );
 }
@@ -890,7 +890,7 @@ function OfferBar({ onPay }) {
 }
 
 // ---------------- 4. 결제 (3단 패키지) ----------------
-function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth }) {
+function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth, form }) {
   const [prodIdx, setProdIdx] = useState(1); // 기본 [인기]
   const [coupon, setCoupon] = useState("");
   const [couponApplied, setCouponApplied] = useState(0);

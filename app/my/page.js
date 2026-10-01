@@ -155,16 +155,6 @@ export default function MyLib() {
             </Card>
           )}
 
-          {/* 인연함 */}
-          {data.matchToken && (
-            <Card accent="rgba(255,107,138,.5)" href={`/m/${data.matchToken}`}>
-              <b style={{ fontSize: 14.5, color: "#ff8ba3" }}>🧧 내 인연함</b>
-              <div style={{ fontSize: 12.5, color: "var(--tx-dim)", marginTop: 4 }}>
-                {data.hasProfile ? "오늘의 카드 확인하러 가기 ›" : "紅線 프로필 만들고 시작하기 ›"}
-              </div>
-            </Card>
-          )}
-
           {/* 더 */}
           <Card href="/reading">
             <b style={{ fontSize: 13.5 }}>🎁 새 감정 · 소중한 사람 감정 선물하기</b>

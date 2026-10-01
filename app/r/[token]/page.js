@@ -8,7 +8,6 @@ import { computeZiwei, BUREAU_NAME } from "../../../lib/ziwei";
 import { buildScores } from "../../../lib/scores";
 import { SECTIONS, EXTRA_SECTIONS } from "../../../lib/report";
 import { CONFIG } from "../../../lib/content";
-import MatchCta from "./MatchCta";
 import ReportPager from "./ReportPager";
 import KLCmod from "korean-lunar-calendar";
 
@@ -117,7 +116,6 @@ export default async function ReportPage({ params }) {
               </div>
             );
           })}
-          <MatchCta token={params.token} />
         </>
       )}
 

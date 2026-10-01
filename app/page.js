@@ -2,7 +2,7 @@
 // ============================================================
 // 메인 홈 (허브) — "무엇이 궁금해서 오셨는가"
 // 서비스 등불 타일 → /reading (관심사 focus 파라미터 전달)
-// 재방문자는 내 감정서/인연함으로 3초 귀가
+// 재방문자는 내 감정서로 3초 귀가
 // ============================================================
 import { useState, useEffect } from "react";
 import { CONFIG } from "../lib/content";
@@ -10,7 +10,6 @@ import { CONFIG } from "../lib/content";
 
 const LANTERNS = [
   { id: "total", icon: "🔮", t: "전통 사주 감정", d: "12개 영역·10년 대운 — 인생 전체를 한 권으로", accent: "#c4b0ff", main: true },
-  { id: "hongseon", icon: "🧧", t: "紅線 소개팅", d: "사진 대신 명반 — 가입 무료, 성사될 때만", accent: "#ff8ba3", href: "/hongseon" },
 ];
 // 준비 중 관심사 — 대표 감정의 가치 소구로 재활용
 const SOON = [
@@ -20,11 +19,11 @@ const SOON = [
 ];
 
 export default function Hub() {
-  const [my, setMy] = useState({ r: null, m: null });
+  const [my, setMy] = useState({ r: null });
 
   useEffect(() => {
     try {
-      setMy({ r: localStorage.getItem("hs_my_report"), m: localStorage.getItem("hs_my_match") });
+      setMy({ r: localStorage.getItem("hs_my_report") });
     } catch (e) {}
   }, []);
 
@@ -57,16 +56,11 @@ export default function Hub() {
       </div>
 
       {/* 재방문 귀갓길 */}
-      {(my.r || my.m) && (
+      {my.r && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center", marginBottom: 26 }}>
           {my.r && (
             <a className="resume-chip rv" style={{ textDecoration: "none", background: "rgba(155,124,255,.14)", borderColor: "rgba(155,124,255,.55)", color: "var(--amethyst-hi)" }} href={`/r/${my.r}`}>
               🌙 내 감정서 다시 보기 →
-            </a>
-          )}
-          {my.m && (
-            <a className="resume-chip" style={{ textDecoration: "none", background: "rgba(255,107,138,.10)", borderColor: "rgba(255,107,138,.45)", color: "#ff8ba3" }} href={`/m/${my.m}`}>
-              🧧 내 인연함 열기 →
             </a>
           )}
         </div>
@@ -123,7 +117,6 @@ export default function Hub() {
       </p>
       <p style={{ textAlign: "center", fontSize: 11, color: "var(--tx-dim)", marginTop: 30, lineHeight: 1.8 }}>
         {CONFIG.BRAND}({CONFIG.BRAND_HANJA}) — 어느 등을 들어도 같은 명반에서 시작해요.<br />
-        紅線 소개팅은 감정서를 받은 분께 열리는 문이에요.<br />
         <span className="mono" style={{ fontSize: 9.5, opacity: .55 }}>{CONFIG.VERSION}</span>
       </p>
     </main>

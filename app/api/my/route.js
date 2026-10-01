@@ -1,6 +1,6 @@
 // ============================================================
 // GET /api/my?t=서고토큰 — 내 서고 데이터
-// 반환: { ok, name, phone4, birthLabel, tag, reports[], matchToken }
+// 반환: { ok, name, phone4, birthLabel, tag, reports[] }
 // reports: 이 번호의 리드들 (감정서 유무·이어읽기 위치 포함)
 // 필요 SQL: alter table leads add column if not exists read_pos int;
 // ============================================================
@@ -20,7 +20,7 @@ export async function GET(req) {
     const supa = sb();
     const { data: leads } = await supa
       .from("leads")
-      .select("id, token, name, birth, sal_names, quiz_hits, report, read_pos, match_optin, profile, created_at")
+      .select("id, token, name, birth, sal_names, quiz_hits, report, read_pos, created_at")
       .eq("phone", phone)
       .order("created_at", { ascending: false })
       .limit(10);
@@ -47,9 +47,6 @@ export async function GET(req) {
         date: String(l.created_at || "").slice(0, 10),
       }));
 
-    // 인연함 — 프로필을 만든 리드 우선, 없으면 감정서 리드
-    const matchLead = leads.find((l) => l.profile) || leads.find((l) => l.match_optin) || (reports[0] ? leads.find((l) => l.token === reports[0].token) : null);
-
     return NextResponse.json({
       ok: true,
       name: main.name || "",
@@ -57,8 +54,6 @@ export async function GET(req) {
       phoneMasked: phone.replace(/(\d{3})(\d{3,4})(\d{4})/, "$1-****-$3"),
       birthLabel, tag,
       reports,
-      matchToken: matchLead ? matchLead.token : null,
-      hasProfile: !!(matchLead && matchLead.profile),
       pendingLead: reports.length ? null : (leads[0] ? { token: leads[0].token } : null),
     });
   } catch (e) {

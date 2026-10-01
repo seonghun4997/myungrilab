@@ -26,23 +26,11 @@ export async function GET(req) {
     paid,
     reported,
     viewed,
-    optin,
-    mCreated,
-    mBothYes,
-    mBothPaid,
-    mExchanged,
   ] = await Promise.all([
     cnt(client, "leads"),
     cnt(client, "leads", (q) => q.eq("paid", true)),
     cnt(client, "leads", (q) => q.not("report", "is", null)),
     cnt(client, "leads", (q) => q.not("viewed_at", "is", null)),
-    cnt(client, "leads", (q) => q.eq("match_optin", true)),
-    cnt(client, "matches"),
-    cnt(client, "matches", (q) => q.eq("a_accept", true).eq("b_accept", true)),
-    cnt(client, "matches", (q) => q.eq("a_paid", true).eq("b_paid", true)),
-    cnt(client, "matches", (q) =>
-      q.eq("a_paid", true).eq("b_paid", true).not("kakao_a", "is", null).not("kakao_b", "is", null)
-    ),
   ]);
 
   return Response.json({
@@ -51,11 +39,6 @@ export async function GET(req) {
       { id: "paid", label: "실결제 완료 (paid ✓)", n: paid },
       { id: "reported", label: "리포트 생성·전달", n: reported },
       { id: "viewed", label: "리포트 열람 (viewed_at)", n: viewed },
-      { id: "optin", label: "紅線 매칭 신청", n: optin },
-      { id: "m_created", label: "인연 카드 발송", n: mCreated, unit: "쌍" },
-      { id: "m_both_yes", label: "양측 수락 (매칭 성사)", n: mBothYes, unit: "쌍" },
-      { id: "m_both_paid", label: "양측 성사비 결제", n: mBothPaid, unit: "쌍" },
-      { id: "m_exchanged", label: "연락처 상호 공개", n: mExchanged, unit: "쌍" },
     ],
   });
 }

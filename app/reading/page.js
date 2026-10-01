@@ -1,20 +1,20 @@
 "use client";
 // ============================================================
 // 홍서당 퍼널 (용용 골격 80% + 홍서당 스킨 20%)
-// 롱폼 랜딩 → 문답(성별~고민) → 총운 진단(무료+봉인) → 3단 상품 결제 → 紅線
+// 롱폼 랜딩 → 문답(성별~고민) → 총운 진단(무료+봉인) → 3단 상품 결제
 // ============================================================
 import { useState, useMemo, useRef, useEffect } from "react";
 import { computeZiwei, JI, STAR_HANJA } from "../../lib/ziwei";
 import {
-  CONFIG, ELDER, OFFER, TRUST, REPORT_ITEMS, MATCHING, TIME_SLOTS,
+  CONFIG, ELDER, OFFER, TRUST, REPORT_ITEMS, TIME_SLOTS,
   STAR_SELF, STAR_SPOUSE, STAR_TAG, EMPTY_SPOUSE, SOCIAL_PROOF,
-  AVATARS, AVATAR_META, INTERESTS, MATCH_UI, LANDING, PRODUCTS, REVIEWS, BANK, LEGAL, tossLink,
+  LANDING, PRODUCTS, REVIEWS, BANK, LEGAL, tossLink,
 } from "../../lib/content";
 import { track } from "@vercel/analytics";
 import ReadingShow from "./ReadingShow";
 
 
-const FBQ_MAP = { lead_submitted: "Lead", pay_click: "InitiateCheckout", pay_view: "ViewContent", match_apply: "SubmitApplication" };
+const FBQ_MAP = { lead_submitted: "Lead", pay_click: "InitiateCheckout", pay_view: "ViewContent" };
 function ev(name, data) {
   try { track(name, data || {}); } catch (e) {}
   try {
@@ -44,7 +44,6 @@ const INPUT_STEPS = ["gender", "birth", "time", "concern", "phone"]; // v18.7: �
 
 export default function Home() {
   const [step, setStep] = useState("intro");
-  const [hongseon, setHongseon] = useState(false); // 紅線 관문 경유 여부 — 인사말·맥락 분기
   const [form, setForm] = useState({
     gender: null, cal: "solar", leap: false,
     y: null, m: null, d: null, slot: null, timeUnknown: false,
@@ -55,7 +54,7 @@ export default function Home() {
   const [leadToken, setLeadToken] = useState(null);
   const [lastSnap, setLastSnap] = useState(null);
   const [paySnap, setPaySnap] = useState(null); // 미완 결제 복구 스냅샷
-  const [myLinks, setMyLinks] = useState({ r: null, m: null }); // 재방문: 내 감정서/인연함
+  const [myLinks, setMyLinks] = useState({ r: null }); // 재방문: 내 감정서
   const topRef = useRef(null);
 
   useEffect(() => {
@@ -80,16 +79,13 @@ export default function Home() {
       try {
         const fc = new URLSearchParams(window.location.search).get("focus");
         if (fc) sessionStorage.setItem("hs_focus", fc);
-        // 紅線 관문에서 온 손님 — 감정 랜딩(자미두수 설득)은 건너뛰고 바로 문답 시작
-        if (fc === "hongseon") { setHongseon(true); setStep("gender"); }
-        else if (sessionStorage.getItem("hs_focus") === "hongseon") setHongseon(true);
       } catch (e) {}
       const f = localStorage.getItem("hs_form");
       if (f) {
         const saved = JSON.parse(f);
         setForm((prev) => ({ ...prev, ...saved, consent: false }));
       }
-      setMyLinks({ r: localStorage.getItem("hs_my_report"), m: localStorage.getItem("hs_my_match") });
+      setMyLinks({ r: localStorage.getItem("hs_my_report") });
     } catch (e) {}
   }, []);
 
@@ -241,9 +237,9 @@ export default function Home() {
   return (
     <main className="phone">
       <div ref={topRef} />
-      {step === "intro" && <Landing onStart={startFunnel} onResume={lastSnap ? resume : null} onResumePay={paySnap ? resumePay : null} myReport={myLinks.r} myMatch={myLinks.m} />}
+      {step === "intro" && <Landing onStart={startFunnel} onResume={lastSnap ? resume : null} onResumePay={paySnap ? resumePay : null} myReport={myLinks.r} />}
       {INPUT_STEPS.includes(step) && (
-        <ElderFlow hongseon={hongseon} step={step} form={form} setForm={setForm} goto={goto} onSubmit={submitAll} farthest={farthest} />
+        <ElderFlow step={step} form={form} setForm={setForm} goto={goto} onSubmit={submitAll} farthest={farthest} />
       )}
       {step === "checking" && <Checking />}
       {step === "diag" && ziwei && <Diagnosis z={ziwei} name={form.name} timeUnknown={form.timeUnknown} onPay={() => goto("pay")} />}
@@ -346,7 +342,7 @@ function CountUp({ end, suffix, duration = 1400 }) {
 }
 
 // ---------------- 0. 롱폼 랜딩 ----------------
-function Landing({ onStart, onResume, onResumePay, myReport, myMatch }) {
+function Landing({ onStart, onResume, onResumePay, myReport }) {
   useReveal();
   useSectionTrack();
   return (
@@ -377,10 +373,9 @@ function Landing({ onStart, onResume, onResumePay, myReport, myMatch }) {
             시작됩니다.
           </h1>
           <p className="hero-sub2">당신의 황금기는 이미 명반(命盤)에 적혀 있습니다.</p>
-          {(myReport || myMatch || onResumePay) && (
+          {(myReport || onResumePay) && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center", marginTop: 18 }}>
               {myReport && <a className="resume-chip rv" style={{ textDecoration: "none", background: "rgba(155,124,255,.14)", borderColor: "rgba(155,124,255,.55)", color: "var(--amethyst-hi)" }} href={`/r/${myReport}`}>🌙 내 감정서 다시 보기 →</a>}
-              {myMatch && <a className="resume-chip" style={{ textDecoration: "none", background: "rgba(255,107,138,.10)", borderColor: "rgba(255,107,138,.45)", color: "#ff8ba3" }} href={`/m/${myMatch}`}>🧧 내 인연함 열기 →</a>}
               {onResumePay && <button className="resume-chip" style={{ background: "rgba(255,212,121,.12)", borderColor: "rgba(255,212,121,.5)", color: "var(--gold)" }} onClick={onResumePay}>결제하던 감정 이어서 하기 →</button>}
             </div>
           )}
@@ -505,7 +500,7 @@ function Landing({ onStart, onResume, onResumePay, myReport, myMatch }) {
 }
 
 // ---------------- 1. 노인 문답 ----------------
-function ElderFlow({ step, form, setForm, goto, onSubmit, farthest = 0, hongseon = false }) {
+function ElderFlow({ step, form, setForm, goto, onSubmit, farthest = 0 }) {
   const idx = INPUT_STEPS.indexOf(step);
   const isEdit = farthest > idx; // 뒤로 와서 고치는 중
   const next = () => goto(INPUT_STEPS[isEdit ? farthest : idx + 1]); // 고치고 나면 원래 자리로
@@ -539,7 +534,7 @@ function ElderFlow({ step, form, setForm, goto, onSubmit, farthest = 0, hongseon
                   maskImage: "radial-gradient(ellipse 64% 74% at 50% 34%, black 52%, transparent 97%)" }} />
             </div>
           )}
-          <p className="say">{(hongseon ? "인연을 이어드리려면,\n먼저 당신의 명반이 필요해요.\n금방 끝나요 — 제가 펴볼게요." : ELDER.intro).split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</p>
+          <p className="say">{ELDER.intro.split("\n").map((l, i) => <span key={i}>{l}<br /></span>)}</p>
           </>
         ) : (
           <>
@@ -894,7 +889,7 @@ function OfferBar({ onPay }) {
   );
 }
 
-// ---------------- 4. 결제 (3단 패키지) + 紅線 ----------------
+// ---------------- 4. 결제 (3단 패키지) ----------------
 function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth }) {
   const [prodIdx, setProdIdx] = useState(1); // 기본 [인기]
   const [coupon, setCoupon] = useState("");
@@ -905,12 +900,6 @@ function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth
   const [paidClicked, setPaidClicked] = useState(false);
   const [depositDone, setDepositDone] = useState(false);
   const [copied, setCopied] = useState("");
-  const [intro, setIntro] = useState("");
-  const [avatar, setAvatar] = useState(null);
-  const [job, setJob] = useState("");
-  const [region, setRegion] = useState("");
-  const [ints, setInts] = useState([]);
-  const [matchDone, setMatchDone] = useState(false);
   const [isMobile, setIsMobile] = useState(true); // 기본 true — 서버 렌더 시 토스 버튼 유지, PC 확인 후 전환
   useEffect(() => { ev("pay_view"); }, []);
   useEffect(() => {
@@ -980,25 +969,6 @@ function Payment({ leadId, leadToken, birthYear, onBack , birthLine, onEditBirth
   };
   const kakaoMsg = `${P.name} 결제 완료했습니다.${orderCode ? ` 주문코드 ${orderCode}` : ""}`;
 
-  const toggleInt = (t) => setInts((xs) => (xs.includes(t) ? xs.filter((x) => x !== t) : xs.length < 5 ? [...xs, t] : xs));
-  const canApply = avatar && intro.trim().length >= 10;
-  const applyMatch = async () => {
-    if (!canApply) return;
-    ev("match_apply");
-    try {
-      await fetch("/api/lead", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          id: leadId,
-          intro: intro.trim().slice(0, 500),
-          matchOptin: true,
-          profile: { avatar, job: job.trim().slice(0, 20), region: region.trim().slice(0, 20), interests: ints },
-        }),
-      });
-    } catch (e) {}
-    setMatchDone(true);
-  };
 
   return (
     <section className="pay">

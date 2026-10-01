@@ -4,6 +4,8 @@
 > 상태: 🔲대기 / ⏸중단 / ✅완료(커밋 해시)
 
 ## ⏸ 중단
+- ✅ **紅線 소개팅 제거** (2026-10-01, 오너 승인) — 코드만 삭제(DB matches·match_optin·profile 보존). 옛 /m/토큰 → /r/토큰, /hongseon → / 리다이렉트. 매칭 크론 2개 제거.
+  **검증**: `next build` 통과(28→23, 삭제 5개 일치) / next start 스모크: 주요 5화면 200, /m→/r 307, /hongseon→/ 307, 삭제 API 4개 404 / 홈·문답 화면 紅線·인연함 문구 0건, 콘솔 오류 0 / 독립 리뷰 에이전트 퇴행 0건.
 - ✅ **공유 미리보기 보강** (2026-07-19) — 원인: 대표 이미지가 **725KB**로 무거워 카카오 수집기가 타임아웃할 위험이 있었다. 또 `twitter.card`·`og:url`이 없었다.
   수리: `app/opengraph-image.png`(725KB) → `app/opengraph-image.jpg`(**109KB**, 크롬 재인코딩 q88, 화질 손상 없음 육안 확인) / `openGraph.url` + `twitter` 블록 추가.
   **검증**: `next build` 통과(28/28) / 구워진 HTML에 `og:image = .../opengraph-image.jpg` 절대주소 · 1200×630 · og:url · twitter:card 확인.
@@ -13,6 +15,9 @@
 - (없음)
 
 ## 🔲 대기
+- 🔲 **결제 화면 무통장 버튼 크래시 의심** — 원인: `Payment` 컴포넌트가 `form`을 props로 받지 않는데 `form.name`·`form.phone` 사용 (app/reading/page.js 입금자명·문자 안내 줄). 코드 확인, 화면 재현 미검증.
+- 🔲 **홈 '내 감정서 다시 보기' 칩 투명** — `.rv`(스크롤 등장 효과) 클래스가 붙었는데 홈에는 `.in`을 켜는 코드가 없어 opacity 0.
+- 🔲 **package-lock.json 불일치** — `npm ci` 실패(webpack 등 lock 누락). Vercel은 install이라 당장 무해.
 - 🔲 **REPLACE_* 링크 실값 주입** (오너 자료 대기) — 카카오채널 링크·토스 결제 링크가 placeholder 상태. 오너가 실제 URL 주면 즉시 교체.
 - 🔲 **Vercel 토큰** — 배포 자동화용 토큰 발급·등록 확인 필요 (완료 확인되면 ✅)
 - 🔲 **match 선호학습 미작동** — 매칭 선호도 학습 로직이 실제로 결과에 반영되지 않음. 원인 미확정 → 재현·로그 먼저.

@@ -6,7 +6,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { CHAPTERS, PARTS } from "../../../lib/report";
 import { ev } from "../../../lib/track";
-import MatchCta from "./MatchCta";
 import RateWidget from "./RateWidget";
 import { Bars, Gauge, VsBar, FlowChart, PastTimeline, RarityCard, PersonCard, MonthsCard, CautionList, MyeongbanGrid } from "./widgets";
 import { HeroArt, ChapterArt } from "./art";
@@ -121,7 +120,7 @@ const InlineCut = ({ id }) => (
   </div>
 );
 
-function ChapterBody({ ch, text, scores, z, gender, name, token }) {
+function ChapterBody({ ch, text, scores, z, gender, name }) {
   const parsed = parseChapter(text);
   const W = (ids, key) => <ChapterWidgets key={key} ids={ids} scores={scores} z={z} gender={gender} name={name} />;
   let content;
@@ -162,16 +161,7 @@ function ChapterBody({ ch, text, scores, z, gender, name, token }) {
     }
     content = out;
   }
-  return (
-    <>
-      {content}
-      {ch.id === "ch08" && (
-        <a href={`/m/${token}`} className="btn btn-seal" style={{ marginTop: 18, fontSize: 14.5 }}>
-          紅線 매칭 — 이 상대, 홍서 아씨가 찾아드려요
-        </a>
-      )}
-    </>
-  );
+  return <>{content}</>;
 }
 
 export default function ReportPager({ name, birth, token, chapters, scores, z }) {
@@ -321,12 +311,12 @@ export default function ReportPager({ name, birth, token, chapters, scores, z })
               <h2 className="display" style={{ fontSize: 19, color: "var(--tx)" }}>{cur.ch.title}</h2>
             </div>
             <ChapterArt theme={cur.ch.id} />
-            <ChapterBody ch={cur.ch} text={chapters[cur.ch.id]} scores={scores} z={z} gender={birth.gender} name={name} token={token} />
+            <ChapterBody ch={cur.ch} text={chapters[cur.ch.id]} scores={scores} z={z} gender={birth.gender} name={name} />
           </div>
         </div>
       )}
 
-      {/* ───── 맺음 · 편지 + 별점 + 紅線 ───── */}
+      {/* ───── 맺음 · 편지 + 별점 ───── */}
       {cur.t === "fin" && (
         <div>
           <div style={{ textAlign: "center", margin: "6px 0 18px" }}>
@@ -347,7 +337,6 @@ export default function ReportPager({ name, birth, token, chapters, scores, z })
             )}
           </div>
           <RateWidget token={token} />
-          <MatchCta token={token} />
         </div>
       )}
 

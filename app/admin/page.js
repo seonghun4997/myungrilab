@@ -1,7 +1,7 @@
 "use client";
 // ============================================================
 // /admin — 운영 콕핏 (ADMIN_KEY로 접근)
-// 탭: 📊 대시보드 / 👤 리드 / 🧧 매칭 / 📨 SMS
+// 탭: 📊 대시보드 / 👤 리드 / 📨 SMS
 // ============================================================
 import { useState, useEffect } from "react";
 import CompanySwitcher from "../company-switcher"; // 디깅코퍼레이션 사업체 스위처
@@ -30,13 +30,11 @@ const LEAD_FILTERS = [
   { id: "claim", label: "💰 입금주장" },
   { id: "wait", label: "입금대기" },
   { id: "sent", label: "발송완료" },
-  { id: "optin", label: "紅線신청" },
 ];
 function applyLeadFilter(leads, f) {
   if (f === "claim") return leads.filter((l) => l.pay_claim && !l.paid);
   if (f === "wait") return leads.filter((l) => !l.paid && !l.report);
   if (f === "sent") return leads.filter((l) => l.report);
-  if (f === "optin") return leads.filter((l) => l.match_optin);
   return leads;
 }
 
@@ -81,9 +79,6 @@ export default function Admin() {
   const [leadFilter, setLeadFilter] = useState("all");
   const [busy, setBusy] = useState({});
   const [msg, setMsg] = useState("");
-  const [sel, setSel] = useState([]);
-  const [preview, setPreview] = useState(null);
-  const [matches, setMatches] = useState(null);
   const [funnel, setFunnel] = useState(null);
   const [sms, setSms] = useState(null);
 
@@ -96,9 +91,6 @@ export default function Admin() {
     setAuthed(true);
     setMsg("");
     try { localStorage.setItem("hs_admin_key", k); } catch (e) {}
-    const mr = await fetch("/api/admin/match", { headers: { "x-admin-key": k } });
-    const md = await mr.json();
-    if (mr.ok) setMatches(md.matches);
     const fr = await fetch("/api/admin/funnel", { headers: { "x-admin-key": k } });
     const fd = await fr.json();
     if (fr.ok) setFunnel(fd.funnel);
@@ -115,42 +107,6 @@ export default function Admin() {
     } catch (e) {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const toggleSel = (id) =>
-    setSel((xs) => (xs.includes(id) ? xs.filter((x) => x !== id) : xs.length < 2 ? [...xs, id] : [xs[1], id]));
-
-  const matchAction = async (action) => {
-    if (sel.length !== 2) { setMsg("紅線신청자 2명을 선택하세요."); return; }
-    setMsg(action === "preview" ? "궁합 계산 중..." : "카드 발송 중...");
-    let res, d;
-    try {
-      res = await fetch("/api/admin/match", {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-admin-key": key },
-        body: JSON.stringify({ action, aId: sel[0], bId: sel[1] }),
-      });
-      d = await res.json();
-    } catch (e) { setMsg("요청 실패: " + e.message); return; }
-    if (!res.ok) { setMsg(d.error || "실패"); return; }
-    setPreview(d);
-    if (action === "create") {
-      setMsg("인연 카드 발송 완료 — 매칭 탭에서 [문자]로 양쪽에 알리세요.");
-      setTab("match");
-      const mr = await fetch("/api/admin/match", { headers: { "x-admin-key": key } });
-      setMatches((await mr.json()).matches);
-    } else {
-      setMsg(`궁합 ${d.grade} (${d.score}점)`);
-    }
-  };
-
-  const togglePaidM = async (matchId, field, val) => {
-    await fetch("/api/admin/match", {
-      method: "PATCH",
-      headers: { "content-type": "application/json", "x-admin-key": key },
-      body: JSON.stringify({ matchId, [field]: val }),
-    });
-    setMatches((ms) => ms.map((m) => (m.id === matchId ? { ...m, [field === "aPaid" ? "a_paid" : "b_paid"]: val } : m)));
-  };
 
   const genReport = async (id) => {
     setBusy((b) => ({ ...b, [id]: true }));
@@ -189,10 +145,6 @@ export default function Admin() {
   const kakaoMsg = (l) =>
     `[${CONFIG.BRAND}] ${l.name}님, 홍서 아씨의 감정서가 완성됐어요. 아래 링크에서 확인해주세요 (본인 전용): ${reportUrl(l.token)} — 궁금한 점은 이 문자에 회신해주세요.`;
   const smsHref = (phone, body) => `sms:${(phone || "").replace(/[^0-9+]/g, "")}?body=${encodeURIComponent(body)}`;
-  const cardMsg = (name, token) =>
-    `[${CONFIG.BRAND}] ${name}님, 홍서 아씨가 인연 카드를 보냈어요. 인연함에서 확인해주세요 (본인 전용): ${typeof window !== "undefined" ? window.location.origin : ""}/m/${token}`;
-  const matchedMsg = (name, token) =>
-    `[${CONFIG.BRAND}] ${name}님, 붉은 실이 이어졌습니다! 인연함에서 성사 안내를 확인해주세요: ${typeof window !== "undefined" ? window.location.origin : ""}/m/${token}`;
 
   const kpi = (() => {
     if (!leads) return null;
@@ -206,7 +158,6 @@ export default function Admin() {
       sent: leads.filter((l) => l.report).length,
       rating: rated.length ? (rated.reduce((s, l) => s + l.rating, 0) / rated.length).toFixed(1) : "—",
       ratedN: rated.length,
-      couples: (matches || []).filter((m) => m.a_accept === true && m.b_accept === true).length,
     };
   })();
 
@@ -214,12 +165,9 @@ export default function Admin() {
     입금주장: leads.filter((l) => l.pay_claim && !l.paid).length,
     입금대기: leads.filter((l) => !l.paid && !l.report).length,
     리포트생성: leads.filter((l) => l.paid && !l.report).length,
-    문자발송_성사: (matches || []).filter((m) => m.a_accept === true && m.b_accept === true && !(m.kakao_a && m.kakao_b)).length,
-    응답대기_카드: (matches || []).filter((m) => m.a_accept == null || m.b_accept == null).length,
   };
 
   const jumpLeads = (f) => { setLeadFilter(f); setTab("leads"); };
-  const selNames = sel.map((id) => (leads || []).find((l) => l.id === id)?.name).filter(Boolean);
 
   // ── 탭 버튼 ──
   const TabBtn = ({ id, label: lbl, badge }) => {
@@ -289,7 +237,6 @@ export default function Admin() {
             <div style={{ display: "flex", borderBottom: `1px solid ${C.border}`, marginBottom: 20, gap: 0 }}>
               <TabBtn id="dash" label="📊 대시보드" />
               <TabBtn id="leads" label="👤 리드" badge={todo?.입금주장 || null} />
-              <TabBtn id="match" label="🧧 매칭" badge={todo?.문자발송_성사 || null} />
               <TabBtn id="sms" label="📨 SMS" />
             </div>
 
@@ -304,7 +251,6 @@ export default function Admin() {
                     <KpiCard label="누적 매출" value={won(kpi.revAll)} color={C.gold} />
                     <KpiCard label="감정서 발송" value={`${kpi.sent}건`} color={C.accent} />
                     <KpiCard label="평균 별점" value={kpi.rating === "—" ? "—" : `★ ${kpi.rating}`} sub={`응답 ${kpi.ratedN}명`} color="#ca8a04" />
-                    <KpiCard label="성사 커플" value={`${kpi.couples}쌍`} color={C.red} />
                   </div>
                 )}
 
@@ -318,12 +264,6 @@ export default function Admin() {
                       </button>
                       <button style={chip(false)} onClick={() => jumpLeads("wait")}>
                         ⏳ 입금대기 {todo.입금대기}건
-                      </button>
-                      <button style={{ ...chip(!!todo.문자발송_성사), fontWeight: todo.문자발송_성사 ? 700 : 400 }} onClick={() => setTab("match")}>
-                        💌 성사 문자 {todo.문자발송_성사}건
-                      </button>
-                      <button style={chip(false)} onClick={() => setTab("match")}>
-                        ⏸ 응답 대기 {todo.응답대기_카드}건
                       </button>
                     </div>
                     <p style={{ fontSize: 11.5, color: C.dim, marginTop: 12, lineHeight: 1.6 }}>
@@ -395,7 +335,6 @@ export default function Admin() {
                       {/* 상단: 이름 + 태그 + 시각 */}
                       <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                          <input type="checkbox" checked={sel.includes(l.id)} onChange={() => toggleSel(l.id)} title="매칭용 선택" />
                           <span style={{ fontSize: 16, fontWeight: 700, color: C.text }}>{l.name || "—"}</span>
                           <span style={{ fontSize: 14, color: C.dim }}>{l.phone}</span>
                           {l.token && (
@@ -411,9 +350,6 @@ export default function Admin() {
                             </span>
                           )}
                           {l.rating && <span style={{ fontSize: 11, color: C.gold, fontWeight: 600 }}>★{l.rating}</span>}
-                          {l.match_optin && (
-                            <span style={{ fontSize: 11, background: "#fff1f2", color: C.red, border: `1px solid ${C.red}`, borderRadius: 6, padding: "2px 7px" }}>紅線</span>
-                          )}
                         </div>
                         <span style={{ fontSize: 11.5, color: C.dim }}>
                           {new Date(l.created_at).toLocaleString("ko-KR")}
@@ -435,11 +371,6 @@ export default function Admin() {
                       {b.concern && (
                         <p style={{ fontSize: 13, color: C.text, background: C.bgSub, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 12px", margin: "0 0 10px" }}>
                           고민: {b.concern}
-                        </p>
-                      )}
-                      {l.intro && (
-                        <p style={{ fontSize: 13, color: C.text, background: "#fff1f2", border: `1px solid #fecdd3`, borderRadius: 8, padding: "8px 12px", margin: "0 0 10px" }}>
-                          紅線 소개: {l.intro}
                         </p>
                       )}
 
@@ -467,14 +398,6 @@ export default function Admin() {
                             }}>서버 발송 📨</button>
                             <a style={{ ...btn(), textDecoration: "none" }} href={smsHref(l.phone, kakaoMsg(l))}>📱 폰으로</a>
                             <a style={{ fontSize: 12.5, color: C.accent, textDecoration: "none" }} href={`/r/${l.token}`} target="_blank" rel="noreferrer">열람 ↗</a>
-                            <button style={{ fontSize: 12, background: "none", border: "none", cursor: "pointer", color: l.match_optin ? C.red : C.dim, textDecoration: "underline", padding: 0 }}
-                              onClick={async () => {
-                                const off = !!l.match_optin;
-                                if (!window.confirm(off ? `${l.name}을(를) 매칭에서 제외할까요?` : `${l.name}을(를) 매칭 풀에 복귀시킬까요?`)) return;
-                                const r = await fetch("/api/admin/leads", { method: "PATCH", headers: { "content-type": "application/json", "x-admin-key": key }, body: JSON.stringify({ action: off ? "matchOff" : "matchOn", id: l.id }) });
-                                if (!r.ok) { const j = await r.json(); window.alert("실패: " + (j.error || r.status)); return; }
-                                load();
-                              }}>{l.match_optin ? "🚫 매칭 제외" : "↩ 매칭 복귀"}</button>
                             <button style={{ fontSize: 12, background: "none", border: "none", cursor: "pointer", color: C.red, textDecoration: "underline", padding: 0 }}
                               onClick={async () => {
                                 if (!window.confirm(`⚠️ ${l.name}(${l.phone}) 완전 삭제할까요?\n복구 불가.`)) return;
@@ -485,76 +408,6 @@ export default function Admin() {
                               }}>🗑 삭제</button>
                           </>
                         )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </>
-            )}
-
-            {/* ─────────────── 🧧 매칭 ─────────────── */}
-            {tab === "match" && (
-              <>
-                <p style={{ fontSize: 12.5, color: C.dim, marginBottom: 14, lineHeight: 1.6 }}>
-                  수동 매칭: 리드 탭에서 2명 체크 → 하단 바 [궁합 확인] / [카드 발송]<br />
-                  자동 매칭·카드 알림은 매일 저녁 크론이 처리합니다.
-                </p>
-
-                {preview && (
-                  <div style={{ ...card, background: C.accentBg, border: `1px solid ${C.accent}` }}>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: C.accent }}>{preview.grade} · {preview.score}점 {preview.aName && `· ${preview.aName} ↔ ${preview.bName}`}</p>
-                    <p style={{ fontSize: 13.5, marginTop: 6, color: C.text }}>{preview.note}</p>
-                    {preview.aToken && (
-                      <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button style={btn()} onClick={() => copy(`${window.location.origin}/m/${preview.aToken}`, "A 링크")}>A 링크 복사</button>
-                        <button style={btn()} onClick={() => copy(`${window.location.origin}/m/${preview.bToken}`, "B 링크")}>B 링크 복사</button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {(!matches || matches.length === 0) && <p style={{ color: C.dim }}>아직 매칭이 없습니다.</p>}
-                {matches && matches.map((m) => {
-                  const matched = m.a_accept === true && m.b_accept === true;
-                  const rejected = m.a_accept === false || m.b_accept === false;
-                  return (
-                    <div key={m.id} style={card}>
-                      <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{m.aName} ↔ {m.bName}</span>
-                        <span style={{
-                          fontSize: 11.5, fontWeight: 600, padding: "2px 8px", borderRadius: 6,
-                          background: matched ? C.greenBg : rejected ? C.redBg : C.bgSub,
-                          color: matched ? C.green : rejected ? C.red : C.dim,
-                        }}>
-                          {matched ? "성사 ✓" : rejected ? "거절" : "응답 대기"}
-                        </span>
-                      </div>
-                      <p style={{ fontSize: 11.5, color: C.dim, marginBottom: 8 }}>
-                        A응답: {m.a_accept == null ? "—" : m.a_accept ? "수락" : "거절"} ·
-                        B응답: {m.b_accept == null ? "—" : m.b_accept ? "수락" : "거절"} ·
-                        {new Date(m.created_at).toLocaleString("ko-KR")}
-                      </p>
-                      {m.note && <p style={{ fontSize: 12.5, color: C.dim, marginBottom: 10 }}>{m.note}</p>}
-                      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", paddingTop: 6, borderTop: `1px solid ${C.border}` }}>
-                        <label style={{ display: "flex", gap: 5, alignItems: "center", fontSize: 13, cursor: "pointer", color: m.a_paid ? C.green : C.dim }}>
-                          <input type="checkbox" checked={!!m.a_paid} onChange={(e) => togglePaidM(m.id, "aPaid", e.target.checked)} /> A 성사비
-                        </label>
-                        <label style={{ display: "flex", gap: 5, alignItems: "center", fontSize: 13, cursor: "pointer", color: m.b_paid ? C.green : C.dim }}>
-                          <input type="checkbox" checked={!!m.b_paid} onChange={(e) => togglePaidM(m.id, "bPaid", e.target.checked)} /> B 성사비
-                        </label>
-                        {[["A", m.aPhone, m.aName, m.aToken], ["B", m.bPhone, m.bName, m.bToken]].map(([side, ph, nm, tk]) => (
-                          <button key={side} style={{ ...btn(), fontSize: 12 }} onClick={async () => {
-                            const body = m.a_accept && m.b_accept ? matchedMsg(nm, tk) : cardMsg(nm, tk);
-                            if (!window.confirm(`${side}측 ${nm}(${ph})에게 문자를 보낼까요?`)) return;
-                            try {
-                              const r = await fetch("/api/admin/send", { method: "POST", headers: { "content-type": "application/json", "x-admin-key": key }, body: JSON.stringify({ to: ph, text: body }) });
-                              const j = await r.json();
-                              window.alert(r.ok ? `${side} 발송 완료` : "실패: " + (j.error || r.status));
-                            } catch (e) { window.alert("실패: " + e.message); }
-                          }}>{side} 서버발송 📨</button>
-                        ))}
-                        {m.kakao_a && <span style={{ fontSize: 11.5, color: C.gold }}>A카톡:{m.kakao_a}</span>}
-                        {m.kakao_b && <span style={{ fontSize: 11.5, color: C.gold }}>B카톡:{m.kakao_b}</span>}
                       </div>
                     </div>
                   );
@@ -593,20 +446,6 @@ export default function Admin() {
                   </>
                 )}
               </>
-            )}
-
-            {/* ── 매칭용 플로팅 바 ── */}
-            {sel.length > 0 && (
-              <div style={{
-                position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 50,
-                background: C.text, borderTop: `1px solid ${C.border}`,
-                padding: "12px 16px", display: "flex", gap: 10, alignItems: "center", justifyContent: "center", flexWrap: "wrap",
-              }}>
-                <span style={{ fontSize: 13, color: "#fff" }}>선택 {sel.length}/2 — {selNames.join(" ↔ ") || ""}</span>
-                <button style={{ ...btn(), background: "#374151", color: "#fff", border: "none" }} disabled={sel.length !== 2} onClick={() => matchAction("preview")}>궁합 확인</button>
-                <button style={btn("primary")} disabled={sel.length !== 2} onClick={() => matchAction("create")}>인연 카드 발송</button>
-                <button style={{ ...btn(), background: "#374151", color: "#fff", border: "none" }} onClick={() => setSel([])}>✕</button>
-              </div>
             )}
           </>
         )}
